@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Alumni Platform{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" defer></script>
+</head>
+<body>
+    {% if session.user_id %}
+    <!-- Sidebar Navigation -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <i class="fas fa-graduation-cap"></i>
+                <span class="logo-text">Alumni Platform</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="sidebar-user">
+            <div class="user-avatar">
+                <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="user-info">
+                <div class="user-name">{{ session.email.split('@')[0].title() }}</div>
+                <div class="user-role">{{ session.role.title() }}</div>
+            </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+            {% if session.role == 'admin' %}
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('alumni_directory') }}" class="nav-item">
+                    <i class="fas fa-users"></i>
+                    <span>Manage Alumni</span>
+                </a>
+                <a href="{{ url_for('admin_events') }}" class="nav-item">
+                    <i class="fas fa-calendar"></i>
+                    <span>Events</span>
+                </a>
+                <a href="{{ url_for('forum') }}" class="nav-item">
+                    <i class="fas fa-comments"></i>
+                    <span>Forum</span>
+                </a>
+            {% else %}
+                <a href="{{ url_for('alumni_dashboard') }}" class="nav-item">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('alumni_profile') }}" class="nav-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <a href="{{ url_for('alumni_directory') }}" class="nav-item">
+                    <i class="fas fa-users"></i>
+                    <span>Directory</span>
+                </a>
+                <a href="{{ url_for('forum') }}" class="nav-item">
+                    <i class="fas fa-comments"></i>
+                    <span>Forum</span>
+                </a>
+                <a href="{{ url_for('events') }}" class="nav-item">
+                    <i class="fas fa-calendar"></i>
+                    <span>Events</span>
+                </a>
+                <a href="{{ url_for('job_board') }}" class="nav-item">
+                    <i class="fas fa-briefcase"></i>
+                    <span>Jobs</span>
+                </a>
+                <a href="{{ url_for('mentorship') }}" class="nav-item">
+                    <i class="fas fa-handshake"></i>
+                    <span>Mentorship</span>
+                </a>
+
+            {% endif %}
+            <a href="{{ url_for('messages') }}" class="nav-item">
+                <i class="fas fa-envelope"></i>
+                <span>Messages</span>
+                <span class="message-badge" id="messageBadge" style="display: none;"></span>
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="nav-item logout-item">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Top Header -->
+    <header class="top-header">
+        <button class="menu-toggle" id="menuToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="header-title">
+            <h1>{% block page_title %}Alumni Platform{% endblock %}</h1>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('messages') }}" class="header-btn" title="Messages">
+                <i class="fas fa-envelope"></i>
+                <span class="notification-badge" id="messageCount">0</span>
+            </a>
+            <button class="header-btn" id="notificationBtn" title="Notifications">
+                <i class="fas fa-bell"></i>
+                <span class="notification-badge" id="notificationCount">0</span>
+            </button>
+            <a href="{{ url_for('logout') }}" class="header-btn logout-btn" title="Logout">
+                <i class="fas fa-sign-out-alt"></i>
+            </a>
+        </div>
+    </header>
+    
+    <!-- Notifications Panel -->
+    <div class="notifications-panel" id="notificationsPanel">
+        <div class="notifications-header">
+            <h3><i class="fas fa-bell"></i> Notifications</h3>
+            <button class="close-notifications" id="closeNotifications">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="notifications-content" id="notificationsContent">
+            <div class="loading-notifications">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading notifications...</p>
+            </div>
+        </div>
+        <div class="notifications-footer">
+            <button class="btn btn-sm btn-secondary" id="markAllRead">Mark All Read</button>
+        </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+    {% else %}
+    <!-- Public Navigation for non-logged users -->
+    <nav class="public-navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="{{ url_for('index') }}">
+                    <i class="fas fa-graduation-cap"></i>
+                    Alumni Platform
+                </a>
+            </div>
+            <div class="nav-menu">
+                <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+                <a href="{{ url_for('signup') }}" class="nav-link btn-primary">Sign Up</a>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="main-content public-content">
+    {% endif %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                            <button class="alert-close">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="content-wrapper">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    
+    {% if session.user_id %}
+    <!-- Mobile Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <!-- Notifications Overlay -->
+    <div class="notifications-overlay" id="notificationsOverlay"></div>
+    {% endif %}
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2025 Digital Alumni Management Platform. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

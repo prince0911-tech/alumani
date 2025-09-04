@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Alumni Profile{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-header">
+        <h1>Alumni Profile</h1>
+        <p>Keep your information updated to stay connected with the alumni network</p>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" class="profile-form">
+        <div class="form-grid">
+            <!-- Personal Information -->
+            <div class="form-section">
+                <h3><i class="fas fa-user"></i> Personal Information</h3>
+                
+                <div class="form-group">
+                    <label for="name">Full Name *</label>
+                    <input type="text" id="name" name="name" value="{{ profile.name if profile else '' }}" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="batch_year">Batch Year *</label>
+                        <select id="batch_year" name="batch_year" required>
+                            <option value="">Select Year</option>
+                            {% for year in range(1990, 2025) %}
+                            <option value="{{ year }}" {{ 'selected' if profile and profile.batch_year == year else '' }}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="department">Department *</label>
+                        <select id="department" name="department" required>
+                            <option value="">Select Department</option>
+                            <option value="Computer Science" {{ 'selected' if profile and profile.department == 'Computer Science' else '' }}>Computer Science</option>
+                            <option value="Electronics" {{ 'selected' if profile and profile.department == 'Electronics' else '' }}>Electronics</option>
+                            <option value="Mechanical" {{ 'selected' if profile and profile.department == 'Mechanical' else '' }}>Mechanical</option>
+                            <option value="Civil" {{ 'selected' if profile and profile.department == 'Civil' else '' }}>Civil</option>
+                            <option value="Electrical" {{ 'selected' if profile and profile.department == 'Electrical' else '' }}>Electrical</option>
+                            <option value="Chemical" {{ 'selected' if profile and profile.department == 'Chemical' else '' }}>Chemical</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Professional Information -->
+            <div class="form-section">
+                <h3><i class="fas fa-briefcase"></i> Professional Information</h3>
+                
+                <div class="form-group">
+                    <label for="current_job">Current Job Title</label>
+                    <input type="text" id="current_job" name="current_job" value="{{ profile.current_job if profile else '' }}">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="company">Company</label>
+                        <input type="text" id="company" name="company" value="{{ profile.company if profile else '' }}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="location">Location</label>
+                        <input type="text" id="location" name="location" value="{{ profile.location if profile else '' }}" placeholder="City, Country">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Achievements & Bio -->
+            <div class="form-section">
+                <h3><i class="fas fa-trophy"></i> Achievements & Bio</h3>
+                
+                <div class="form-group">
+                    <label for="achievements">Achievements & Bio</label>
+                    <textarea id="achievements" name="achievements" rows="4" placeholder="Share your achievements, awards, and professional journey...">{{ profile.achievements if profile else '' }}</textarea>
+                </div>
+            </div>
+
+            <!-- Social Links -->
+            <div class="form-section">
+                <h3><i class="fas fa-link"></i> Social Links</h3>
+                
+                <div class="form-group">
+                    <label for="linkedin_url">LinkedIn Profile</label>
+                    <input type="url" id="linkedin_url" name="linkedin_url" value="{{ profile.linkedin_url if profile else '' }}" placeholder="https://linkedin.com/in/yourprofile">
+                </div>
+            </div>
+
+            <!-- File Uploads -->
+            <div class="form-section">
+                <h3><i class="fas fa-upload"></i> File Uploads</h3>
+                
+                <div class="form-group">
+                    <label for="profile_picture">Profile Picture</label>
+                    <input type="file" id="profile_picture" name="profile_picture" accept="image/*">
+                    <small>Upload a professional photo (JPG, PNG, max 5MB)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="cv_file">Resume/CV</label>
+                    <input type="file" id="cv_file" name="cv_file" accept=".pdf,.doc,.docx">
+                    <small>Upload your latest resume (PDF, DOC, max 10MB)</small>
+                </div>
+            </div>
+
+            <!-- Privacy Settings -->
+            <div class="form-section">
+                <h3><i class="fas fa-shield-alt"></i> Privacy Settings</h3>
+                
+                <div class="form-group">
+                    <label for="privacy_level">Profile Visibility</label>
+                    <select id="privacy_level" name="privacy_level">
+                        <option value="public" {{ 'selected' if profile and profile.privacy_level == 'public' else '' }}>Public - Visible to all alumni</option>
+                        <option value="private" {{ 'selected' if profile and profile.privacy_level == 'private' else '' }}>Private - Visible only to verified alumni</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="available_for_mentorship" {{ 'checked' if profile and profile.available_for_mentorship else '' }}>
+                        Available for Mentorship
+                    </label>
+                    <small>Allow students and junior alumni to request mentorship</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Save Profile
+            </button>
+            <a href="{{ url_for('alumni_dashboard') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+// Form validation
+document.querySelector('.profile-form').addEventListener('submit', function(e) {
+    const requiredFields = ['name', 'batch_year', 'department'];
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+        const input = document.getElementById(field);
+        if (!input.value.trim()) {
+            input.classList.add('error');
+            isValid = false;
+        } else {
+            input.classList.remove('error');
+        }
+    });
+    
+    if (!isValid) {
+        e.preventDefault();
+        alert('Please fill in all required fields.');
+    }
+});
+
+// File upload preview
+document.getElementById('profile_picture').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // Create preview if doesn't exist
+            let preview = document.getElementById('profile-preview');
+            if (!preview) {
+                preview = document.createElement('img');
+                preview.id = 'profile-preview';
+                preview.style.maxWidth = '150px';
+                preview.style.maxHeight = '150px';
+                preview.style.marginTop = '10px';
+                preview.style.borderRadius = '50%';
+                e.target.parentNode.appendChild(preview);
+            }
+            preview.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+{% endblock %}

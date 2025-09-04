@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Alumni Dashboard{% endblock %}
+{% block page_title %}Alumni Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>Welcome back, {{ profile.name if profile else session.email }}!</h1>
+        {% if not session.is_verified %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            Your account is pending verification. Some features may be limited.
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Profile Status Card -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3><i class="fas fa-user"></i> Profile Status</h3>
+            </div>
+            <div class="card-content">
+                {% if profile %}
+                    <div class="profile-summary">
+                        <p><strong>Name:</strong> {{ profile.name }}</p>
+                        <p><strong>Batch:</strong> {{ profile.batch_year }}</p>
+                        <p><strong>Department:</strong> {{ profile.department }}</p>
+                        <p><strong>Current Role:</strong> {{ profile.current_job or 'Not specified' }}</p>
+                    </div>
+                    <a href="{{ url_for('alumni_profile') }}" class="btn btn-primary">Update Profile</a>
+                {% else %}
+                    <p>Complete your profile to connect with other alumni.</p>
+                    <a href="{{ url_for('alumni_profile') }}" class="btn btn-primary">Create Profile</a>
+                {% endif %}
+                
+                <div class="linkedin-sync">
+                    <button class="btn btn-secondary" onclick="syncLinkedIn()">
+                        <i class="fab fa-linkedin"></i> Sync LinkedIn
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Card -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+            </div>
+            <div class="card-content">
+                <div class="quick-actions">
+                    <a href="{{ url_for('alumni_directory') }}" class="action-btn">
+                        <i class="fas fa-users"></i>
+                        <span>Browse Directory</span>
+                    </a>
+                    <a href="{{ url_for('forum') }}" class="action-btn">
+                        <i class="fas fa-comments"></i>
+                        <span>Join Discussion</span>
+                    </a>
+                    <a href="{{ url_for('job_board') }}" class="action-btn">
+                        <i class="fas fa-briefcase"></i>
+                        <span>View Jobs</span>
+                    </a>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Upcoming Events Card -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3><i class="fas fa-calendar"></i> Upcoming Events</h3>
+            </div>
+            <div class="card-content">
+                {% if events %}
+                    <div class="events-list">
+                        {% for event in events %}
+                        <div class="event-item">
+                            <div class="event-date">
+                                {{ event.event_date.strftime('%b %d') }}
+                            </div>
+                            <div class="event-details">
+                                <h4>{{ event.title }}</h4>
+                                <p>{{ event.location }}</p>
+                            </div>
+                            <button class="btn btn-sm btn-primary">Register</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>No upcoming events at the moment.</p>
+                {% endif %}
+                <a href="{{ url_for('events') }}" class="btn btn-secondary">View All Events</a>
+            </div>
+        </div>
+
+        <!-- Announcements Card -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3><i class="fas fa-bullhorn"></i> Announcements</h3>
+            </div>
+            <div class="card-content">
+                {% if announcements %}
+                    <div class="announcements-list">
+                        {% for announcement in announcements %}
+                        <div class="announcement-item">
+                            <h4>{{ announcement.title }}</h4>
+                            <p>{{ announcement.content[:100] }}...</p>
+                            <small>{{ announcement.created_at.strftime('%B %d, %Y') }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>No recent announcements.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Network Stats Card -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3><i class="fas fa-chart-bar"></i> Your Network</h3>
+            </div>
+            <div class="card-content">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <h4>25</h4>
+                        <p>Connections</p>
+                    </div>
+                    <div class="stat-item">
+                        <h4>5</h4>
+                        <p>Events Attended</p>
+                    </div>
+                    <div class="stat-item">
+                        <h4>3</h4>
+                        <p>Forum Posts</p>
+                    </div>
+                    <div class="stat-item">
+                        <h4>12</h4>
+                        <p>Messages</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mentorship Card -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3><i class="fas fa-handshake"></i> Mentorship</h3>
+            </div>
+            <div class="card-content">
+                <div class="mentorship-toggle">
+                    <label class="switch">
+                        <input type="checkbox" {{ 'checked' if profile and profile.available_for_mentorship else '' }}>
+                        <span class="slider"></span>
+                    </label>
+                    <span>Available for Mentorship</span>
+                </div>
+                <div class="mentorship-stats">
+                    <p>Mentorship Requests: <strong>2 pending</strong></p>
+                    <p>Active Mentorships: <strong>1</strong></p>
+                </div>
+                <a href="{{ url_for('mentorship') }}" class="btn btn-secondary">Manage Mentorship</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function syncLinkedIn() {
+    // Simulate LinkedIn sync
+    const btn = event.target;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        btn.innerHTML = '<i class="fab fa-linkedin"></i> Synced!';
+        btn.classList.add('btn-success');
+        
+        // Show success message
+        showNotification('LinkedIn profile synced successfully!', 'success');
+        
+        setTimeout(() => {
+            btn.innerHTML = '<i class="fab fa-linkedin"></i> Sync LinkedIn';
+            btn.disabled = false;
+            btn.classList.remove('btn-success');
+        }, 2000);
+    }, 2000);
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} notification`;
+    notification.innerHTML = `${message} <button class="alert-close">&times;</button>`;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+</script>
+{% endblock %}

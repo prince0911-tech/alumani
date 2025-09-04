@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+
+{% block title %}Alumni Directory{% endblock %}
+
+{% block content %}
+<div class="directory-container">
+    <div class="directory-header">
+        <h1>Alumni Directory</h1>
+        <p>Connect with fellow alumni from your college</p>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="search-section">
+        <form method="GET" class="search-form">
+            <div class="search-row">
+                <div class="search-group">
+                    <input type="text" name="search" value="{{ search }}" placeholder="Search by name, company, or location..." class="search-input">
+                </div>
+                
+                <div class="filter-group">
+                    <select name="batch" class="filter-select">
+                        <option value="">All Batches</option>
+                        {% for batch in batches %}
+                        <option value="{{ batch.batch_year }}" {{ 'selected' if selected_batch == batch.batch_year|string else '' }}>
+                            {{ batch.batch_year }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <select name="department" class="filter-select">
+                        <option value="">All Departments</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.department }}" {{ 'selected' if selected_department == dept.department else '' }}>
+                            {{ dept.department }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Alumni Grid -->
+    <div class="alumni-grid">
+        {% if alumni %}
+            {% for alumnus in alumni %}
+            <div class="alumni-card">
+                <div class="alumni-avatar">
+                    {% if alumnus.profile_picture %}
+                        <img src="{{ url_for('static', filename='uploads/' + alumnus.profile_picture) }}" alt="{{ alumnus.name }}">
+                    {% else %}
+                        <div class="avatar-placeholder">
+                            {{ alumnus.name[0].upper() }}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="alumni-info">
+                    <h3>{{ alumnus.name }}</h3>
+                    <p class="batch-dept">{{ alumnus.batch_year }} • {{ alumnus.department }}</p>
+                    
+                    {% if alumnus.current_job %}
+                    <p class="job-title">{{ alumnus.current_job }}</p>
+                    {% endif %}
+                    
+                    {% if alumnus.company %}
+                    <p class="company">{{ alumnus.company }}</p>
+                    {% endif %}
+                    
+                    {% if alumnus.location %}
+                    <p class="location">
+                        <i class="fas fa-map-marker-alt"></i> {{ alumnus.location }}
+                    </p>
+                    {% endif %}
+                    
+                    <div class="alumni-actions">
+                        <button class="btn btn-sm btn-primary" onclick="sendMessage({{ alumnus.user_id }})">
+                            <i class="fas fa-envelope"></i> Message
+                        </button>
+                        
+                        {% if alumnus.linkedin_url %}
+                        <a href="{{ alumnus.linkedin_url }}" target="_blank" class="btn btn-sm btn-secondary">
+                            <i class="fab fa-linkedin"></i> LinkedIn
+                        </a>
+                        {% endif %}
+                        
+                        {% if alumnus.available_for_mentorship %}
+                        <button class="btn btn-sm btn-success" onclick="requestMentorship({{ alumnus.user_id }})">
+                            <i class="fas fa-handshake"></i> Mentor
+                        </button>
+                        {% endif %}
+                        
+                        {% if session.role == 'admin' %}
+                        <button class="btn btn-sm btn-danger" onclick="removeAlumni({{ alumnus.user_id }}, '{{ alumnus.name }}')">
+                            <i class="fas fa-trash"></i> Remove
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-results">
+                <i class="fas fa-search"></i>
+                <h3>No alumni found</h3>
+                <p>Try adjusting your search criteria or filters.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Message Modal -->
+<div id="messageModal" class="modal">
+    <div class="modal-overlay" onclick="closeModal('messageModal')"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Send Message</h3>
+            <button class="modal-close" onclick="closeModal('messageModal')">&times;</button>
+        </div>
+        <form id="messageForm">
+            <div class="form-group">
+                <label for="messageSubject">Subject</label>
+                <input type="text" id="messageSubject" name="subject" required>
+            </div>
+            <div class="form-group">
+                <label for="messageContent">Message</label>
+                <textarea id="messageContent" name="content" rows="5" required></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">Send Message</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('messageModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.directory-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.directory-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.search-section {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+.search-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 15px;
+    align-items: end;
+}
+
+.search-input, .filter-select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.alumni-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.alumni-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: transform 0.3s;
+}
+
+.alumni-card:hover {
+    transform: translateY(-5px);
+}
+
+.alumni-avatar {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.alumni-avatar img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0 auto;
+}
+
+.alumni-info h3 {
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.batch-dept {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.job-title {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.company {
+    color: #667eea;
+    margin-bottom: 5px;
+}
+
+.location {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.alumni-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.no-results i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    color: #ddd;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 10px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+@media (max-width: 768px) {
+    .search-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .alumni-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+let selectedUserId = null;
+
+function sendMessage(userId) {
+    selectedUserId = userId;
+    openModal('messageModal');
+}
+
+function requestMentorship(userId) {
+    if (confirm('Send a mentorship request to this alumni?')) {
+        // Simulate mentorship request
+        showNotification('Mentorship request sent successfully!', 'success');
+    }
+}
+
+function removeAlumni(userId, name) {
+    if (confirm(`Are you sure you want to remove ${name} from the alumni directory? This action cannot be undone.`)) {
+        fetch(`/admin/remove_alumni/${userId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Alumni removed successfully', 'success');
+                // Remove the card from the UI
+                event.target.closest('.alumni-card').remove();
+            } else {
+                showNotification(data.message || 'Error removing alumni', 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('Error removing alumni', 'error');
+        });
+    }
+}
+
+document.getElementById('messageForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const subject = document.getElementById('messageSubject').value;
+    const content = document.getElementById('messageContent').value;
+    
+    // Simulate sending message
+    setTimeout(() => {
+        showNotification('Message sent successfully!', 'success');
+        closeModal('messageModal');
+        document.getElementById('messageForm').reset();
+    }, 1000);
+});
+</script>
+{% endblock %}

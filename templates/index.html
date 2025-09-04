@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Alumni Platform{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="hero-content">
+        <h1>Digital Alumni Management Platform</h1>
+        <p>Connect, Engage, and Grow with your Alumni Network</p>
+        <div class="hero-buttons">
+            <a href="{{ url_for('login') }}" class="btn btn-primary">Login</a>
+            <a href="{{ url_for('signup') }}" class="btn btn-secondary">Join Alumni Network</a>
+        </div>
+    </div>
+</div>
+
+<div class="features-section">
+    <div class="container">
+        <h2>Platform Features</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <i class="fas fa-users"></i>
+                <h3>Alumni Directory</h3>
+                <p>Connect with fellow alumni from your batch and department</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-calendar-alt"></i>
+                <h3>Events & Reunions</h3>
+                <p>Stay updated with upcoming events and register easily</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-handshake"></i>
+                <h3>Mentorship</h3>
+                <p>Find mentors or become one to guide the next generation</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-briefcase"></i>
+                <h3>Career Opportunities</h3>
+                <p>Discover job openings and internships shared by alumni</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-heart"></i>
+                <h3>Fundraising</h3>
+                <p>Support your alma mater through donations and contributions</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-comments"></i>
+                <h3>Discussion Forum</h3>
+                <p>Engage in meaningful discussions with the community</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="stats-section">
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <h3>5000+</h3>
+                <p>Alumni Members</p>
+            </div>
+            <div class="stat-item">
+                <h3>150+</h3>
+                <p>Events Organized</p>
+            </div>
+            <div class="stat-item">
+                <h3>₹50L+</h3>
+                <p>Funds Raised</p>
+            </div>
+            <div class="stat-item">
+                <h3>200+</h3>
+                <p>Mentorship Connections</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

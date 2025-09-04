@@ -1,0 +1,868 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+{% block page_title %}Admin Dashboard{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <h1>Admin Dashboard</h1>
+        <p>Manage your alumni platform efficiently</p>
+    </div>
+
+    <!-- Statistics Overview -->
+    <div class="stats-overview">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon alumni">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ stats.total_alumni }}</h3>
+                    <p>Total Alumni</p>
+                    <small>{{ stats.verified_alumni }} verified</small>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon pending">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ stats.pending_verification }}</h3>
+                    <p>Pending Verification</p>
+                    <small>Requires attention</small>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon events">
+                    <i class="fas fa-calendar"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ stats.total_events }}</h3>
+                    <p>Total Events</p>
+                    <small>All time</small>
+                </div>
+            </div>
+
+
+
+            <div class="stat-card">
+                <div class="stat-icon posts">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ stats.total_posts }}</h3>
+                    <p>Forum Posts</p>
+                    <small>Community engagement</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-content">
+        <!-- Quick Actions -->
+        <div class="quick-actions-section">
+            <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
+            <div class="actions-grid">
+                <button class="action-card" onclick="window.location.href='/admin/events'">
+                    <i class="fas fa-calendar-alt"></i>
+                    <h3>Manage Events</h3>
+                    <p>Create and manage alumni events</p>
+                </button>
+
+                <button class="action-card" onclick="openModal('announcementModal')">
+                    <i class="fas fa-bullhorn"></i>
+                    <h3>Send Announcement</h3>
+                    <p>Broadcast to all alumni</p>
+                </button>
+
+                <button class="action-card" onclick="exportReports()">
+                    <i class="fas fa-download"></i>
+                    <h3>Export Reports</h3>
+                    <p>Download CSV reports</p>
+                </button>
+
+                <button class="action-card" onclick="openModal('jobPostModal')">
+                    <i class="fas fa-briefcase"></i>
+                    <h3>Post Job</h3>
+                    <p>Add career opportunities</p>
+                </button>
+
+                <button class="action-card" onclick="openModal('addAlumniModal')">
+                    <i class="fas fa-user-plus"></i>
+                    <h3>Add Alumni</h3>
+                    <p>Manually add new alumni</p>
+                </button>
+            </div>
+        </div>
+
+        <!-- Pending Verifications -->
+        <div class="verification-section">
+            <h2><i class="fas fa-user-check"></i> Pending Alumni Verification</h2>
+            {% if recent_alumni %}
+            <div class="verification-list">
+                {% for alumni in recent_alumni %}
+                <div class="verification-item">
+                    <div class="alumni-info">
+                        <h4>{{ alumni.name or alumni.email }}</h4>
+                        <p>{{ alumni.email }}</p>
+                        <small>Registered: {{ alumni.created_at.strftime('%B %d, %Y') }}</small>
+                    </div>
+                    <div class="verification-actions">
+                        <button class="btn btn-success btn-sm" onclick="verifyAlumni({{ alumni.id }})">
+                            <i class="fas fa-check"></i> Approve
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="rejectAlumni({{ alumni.id }})">
+                            <i class="fas fa-times"></i> Reject
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="viewProfile({{ alumni.id }})">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-pending">
+                <i class="fas fa-check-circle"></i>
+                <p>No pending verifications</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Analytics Charts -->
+        <div class="analytics-section">
+            <h2><i class="fas fa-chart-line"></i> Analytics & Insights</h2>
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3><i class="fas fa-chart-line"></i> Registration Trend</h3>
+                    <canvas id="registrationChart"></canvas>
+                </div>
+
+                <div class="chart-card">
+                    <h3><i class="fas fa-chart-bar"></i> Event Participation</h3>
+                    <canvas id="participationChart"></canvas>
+                </div>
+
+
+
+                <div class="chart-card">
+                    <h3><i class="fas fa-map-marked-alt"></i> Alumni Locations</h3>
+                    <div id="alumniMap"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Alumni Modal -->
+<div id="addAlumniModal" class="modal">
+    <div class="modal-overlay" onclick="closeModal('addAlumniModal')"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add New Alumni</h3>
+            <button class="modal-close" onclick="closeModal('addAlumniModal')">&times;</button>
+        </div>
+        <form id="addAlumniForm" method="POST" action="/admin/add_alumni">
+            <div class="form-group">
+                <label for="alumniEmail">Email</label>
+                <input type="email" id="alumniEmail" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="alumniName">Full Name</label>
+                <input type="text" id="alumniName" name="name" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="alumniBatch">Batch Year</label>
+                    <input type="number" id="alumniBatch" name="batch_year" min="1950" max="2030" required>
+                </div>
+                <div class="form-group">
+                    <label for="alumniDepartment">Department</label>
+                    <input type="text" id="alumniDepartment" name="department" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="alumniPassword">Temporary Password</label>
+                <input type="password" id="alumniPassword" name="password" required>
+                <small>Alumni can change this after first login</small>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="auto_verify" checked>
+                    Auto-verify this alumni
+                </label>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">Add Alumni</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addAlumniModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Announcement Modal -->
+<div id="announcementModal" class="modal">
+    <div class="modal-overlay" onclick="closeModal('announcementModal')"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Send Announcement</h3>
+            <button class="modal-close" onclick="closeModal('announcementModal')">&times;</button>
+        </div>
+        <form id="announcementForm">
+            <div class="form-group">
+                <label for="announcementTitle">Title</label>
+                <input type="text" id="announcementTitle" name="title" required>
+            </div>
+            <div class="form-group">
+                <label for="announcementContent">Message</label>
+                <textarea id="announcementContent" name="content" rows="5" required></textarea>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="send_email">
+                    Send email notification to all alumni
+                </label>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">Send Announcement</button>
+                <button type="button" class="btn btn-secondary"
+                    onclick="closeModal('announcementModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .admin-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+
+    .admin-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .stats-overview {
+        margin-bottom: 50px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    .stat-icon.alumni {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .stat-icon.pending {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .stat-icon.events {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+
+
+    .stat-icon.posts {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+
+    .stat-content h3 {
+        font-size: 2rem;
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    .stat-content p {
+        color: #666;
+        margin-bottom: 5px;
+    }
+
+    .stat-content small {
+        color: #999;
+        font-size: 12px;
+    }
+
+    .admin-content {
+        display: flex;
+        flex-direction: column;
+        gap: 40px;
+    }
+
+    .quick-actions-section h2,
+    .verification-section h2,
+    .analytics-section h2 {
+        color: #333;
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+
+    .action-card {
+        background: white;
+        border: none;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+    }
+
+    .action-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    .action-card i {
+        font-size: 2.5rem;
+        color: #667eea;
+        margin-bottom: 15px;
+    }
+
+    .action-card h3 {
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    .action-card p {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .verification-list {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .verification-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .verification-item:last-child {
+        border-bottom: none;
+    }
+
+    .alumni-info h4 {
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    .alumni-info p {
+        color: #666;
+        margin-bottom: 5px;
+    }
+
+    .alumni-info small {
+        color: #999;
+    }
+
+    .verification-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .no-pending {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .no-pending i {
+        font-size: 3rem;
+        color: #28a745;
+        margin-bottom: 15px;
+    }
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 25px;
+    }
+
+    .chart-card {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        min-height: 280px;
+        position: relative;
+    }
+
+    .chart-card h3 {
+        color: #333;
+        margin-bottom: 15px;
+        text-align: center;
+        font-size: 1.1rem;
+    }
+
+    .chart-card canvas {
+        max-height: 200px !important;
+    }
+
+    .chart-loader,
+    .map-loader,
+    .map-error {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 200px;
+        color: #666;
+    }
+
+    .chart-loader i,
+    .map-loader i {
+        font-size: 2rem;
+        margin-bottom: 10px;
+        color: #4f46e5;
+    }
+
+    .map-error i {
+        font-size: 2rem;
+        margin-bottom: 10px;
+        color: #ef4444;
+    }
+
+    .chart-loader p,
+    .map-loader p,
+    .map-error p {
+        margin: 0;
+        font-size: 14px;
+    }
+
+    #alumniMap {
+        height: 200px !important;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    /* Performance optimizations */
+    .chart-card {
+        will-change: transform;
+    }
+
+    .chart-card canvas {
+        will-change: auto;
+    }
+
+    /* Reduced motion for better performance */
+    @media (prefers-reduced-motion: reduce) {
+
+        .chart-card,
+        .action-card,
+        .stat-card {
+            transition: none;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .actions-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .charts-grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .chart-card {
+            padding: 15px;
+            min-height: 250px;
+        }
+
+        .chart-card canvas {
+            max-height: 180px !important;
+        }
+
+        #alumniMap {
+            height: 180px !important;
+        }
+
+        .verification-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .verification-actions {
+            width: 100%;
+            justify-content: flex-end;
+        }
+
+        .admin-header h1 {
+            font-size: 1.8rem;
+        }
+    }
+</style>
+
+<script>
+    function verifyAlumni(userId) {
+        if (confirm('Approve this alumni for verification?')) {
+            window.location.href = `/admin/verify_alumni/${userId}`;
+        }
+    }
+
+    function rejectAlumni(userId) {
+        if (confirm('Reject this alumni application?')) {
+            showNotification('Alumni application rejected', 'success');
+            // Simulate removal from list
+            event.target.closest('.verification-item').remove();
+        }
+    }
+
+    function viewProfile(userId) {
+        showNotification('Profile viewer will open in a new window', 'info');
+    }
+
+    function exportReports() {
+        const btn = event.target.closest('.action-card');
+        const originalContent = btn.innerHTML;
+
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><h3>Generating...</h3><p>Please wait</p>';
+
+        setTimeout(() => {
+            btn.innerHTML = originalContent;
+            showNotification('Reports exported successfully!', 'success');
+
+            // Simulate CSV download
+            const link = document.createElement('a');
+            link.href = '#';
+            link.download = 'alumni_reports.csv';
+            link.click();
+        }, 3000);
+    }
+
+    // Form submissions
+    document.getElementById('addAlumniForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+
+        fetch('/admin/add_alumni', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Alumni added successfully!', 'success');
+                    closeModal('addAlumniModal');
+                    this.reset();
+                } else {
+                    showNotification(data.message || 'Error adding alumni', 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error adding alumni', 'error');
+            });
+    });
+
+    document.getElementById('announcementForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        showNotification('Announcement sent to all alumni!', 'success');
+        closeModal('announcementModal');
+        this.reset();
+    });
+
+    // Optimized Chart Loading with Intersection Observer
+    let chartsLoaded = false;
+    let mapLoaded = false;
+
+    // Intersection Observer for lazy loading
+    const chartObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && !chartsLoaded) {
+                loadCharts();
+                chartsLoaded = true;
+            }
+        });
+    }, { threshold: 0.1 });
+
+    // Observe the analytics section
+    const analyticsSection = document.querySelector('.analytics-section');
+    if (analyticsSection) {
+        chartObserver.observe(analyticsSection);
+    }
+
+    function loadCharts() {
+        // Show loading state
+        showChartLoading();
+
+        // Load charts with delay to prevent blocking
+        setTimeout(() => {
+            initRegistrationChart();
+        }, 100);
+
+        setTimeout(() => {
+            initParticipationChart();
+        }, 300);
+
+
+
+        setTimeout(() => {
+            initAlumniMap();
+        }, 700);
+    }
+
+    function showChartLoading() {
+        const chartCards = document.querySelectorAll('.chart-card canvas, #alumniMap');
+        chartCards.forEach(card => {
+            if (card.id !== 'alumniMap') {
+                card.style.display = 'none';
+                const loader = document.createElement('div');
+                loader.className = 'chart-loader';
+                loader.innerHTML = '<i class="fas fa-spinner fa-spin"></i><p>Loading chart...</p>';
+                card.parentNode.appendChild(loader);
+            }
+        });
+    }
+
+    function hideChartLoading(chartId) {
+        const chartCard = document.getElementById(chartId).parentNode;
+        const loader = chartCard.querySelector('.chart-loader');
+        if (loader) {
+            loader.remove();
+            document.getElementById(chartId).style.display = 'block';
+        }
+    }
+
+    // Optimized Registration Chart
+    function initRegistrationChart() {
+        try {
+            const regCtx = document.getElementById('registrationChart').getContext('2d');
+            new Chart(regCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'New Registrations',
+                        data: [12, 19, 8, 15, 25, 18],
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 800,
+                        easing: 'easeOutQuart'
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            hideChartLoading('registrationChart');
+        } catch (error) {
+            console.error('Error loading registration chart:', error);
+            document.getElementById('registrationChart').parentNode.innerHTML = '<div class="chart-error"><i class="fas fa-exclamation-triangle"></i><p>Chart unavailable</p></div>';
+        }
+    }
+
+    // Optimized Participation Chart
+    function initParticipationChart() {
+        try {
+            const partCtx = document.getElementById('participationChart').getContext('2d');
+            new Chart(partCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Tech Talk', 'Alumni Meet', 'Workshop', 'Reunion'],
+                    datasets: [{
+                        label: 'Participants',
+                        data: [65, 89, 45, 120],
+                        backgroundColor: [
+                            '#4f46e5',
+                            '#7c3aed',
+                            '#ec4899',
+                            '#10b981'
+                        ],
+                        borderRadius: 6,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 800,
+                        easing: 'easeOutQuart'
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            hideChartLoading('participationChart');
+        } catch (error) {
+            console.error('Error loading participation chart:', error);
+            document.getElementById('participationChart').parentNode.innerHTML = '<div class="chart-error"><i class="fas fa-exclamation-triangle"></i><p>Chart unavailable</p></div>';
+        }
+    }
+
+    // Optimized Donation Chart
+    function initDonationChart() {
+        const donCtx = document.getElementById('donationChart').getContext('2d');
+        new Chart(donCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Scholarships', 'Infrastructure', 'Research', 'Activities'],
+                datasets: [{
+                    data: [40, 30, 20, 10],
+                    backgroundColor: ['#10b981', '#4f46e5', '#7c3aed', '#ec4899'],
+                    borderWidth: 0,
+                    cutout: '60%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 800,
+                    easing: 'easeOutQuart'
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            usePointStyle: true
+                        }
+                    }
+                }
+            }
+        });
+        hideChartLoading('donationChart');
+    }
+
+    // Lightweight Alumni Map
+    function initAlumniMap() {
+        if (mapLoaded) return;
+
+        const mapElement = document.getElementById('alumniMap');
+        mapElement.innerHTML = '<div class="map-loader"><i class="fas fa-spinner fa-spin"></i><p>Loading map...</p></div>';
+
+        setTimeout(() => {
+            try {
+                const map = L.map('alumniMap', {
+                    zoomControl: false,
+                    scrollWheelZoom: false
+                }).setView([20.5937, 78.9629], 5);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '',
+                    maxZoom: 10
+                }).addTo(map);
+
+                // Simplified markers
+                const locations = [
+                    [28.6139, 77.2090, 'Delhi: 45'],
+                    [19.0760, 72.8777, 'Mumbai: 38'],
+                    [12.9716, 77.5946, 'Bangalore: 52'],
+                    [13.0827, 80.2707, 'Chennai: 29']
+                ];
+
+                locations.forEach(loc => {
+                    L.circleMarker([loc[0], loc[1]], {
+                        radius: 8,
+                        fillColor: '#4f46e5',
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map).bindPopup(loc[2]);
+                });
+
+                mapLoaded = true;
+            } catch (error) {
+                mapElement.innerHTML = '<div class="map-error"><i class="fas fa-exclamation-triangle"></i><p>Map unavailable</p></div>';
+            }
+        }, 500);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,500 @@
+{% extends "base.html" %}
+
+{% block title %}Messages{% endblock %}
+
+{% block content %}
+<div class="messages-container">
+    <div class="messages-header">
+        <h1>Messages</h1>
+        <button class="btn btn-primary" onclick="openModal('composeModal')">
+            <i class="fas fa-plus"></i> Compose Message
+        </button>
+    </div>
+
+    <div class="messages-layout">
+        <!-- Message List -->
+        <div class="messages-sidebar">
+            <div class="message-tabs">
+                <button class="tab-btn active" onclick="switchTab('inbox')">
+                    <i class="fas fa-inbox"></i> Inbox
+                    {% if unread_count > 0 %}
+                    <span class="badge">{{ unread_count }}</span>
+                    {% endif %}
+                </button>
+                <button class="tab-btn" onclick="switchTab('sent')">
+                    <i class="fas fa-paper-plane"></i> Sent
+                </button>
+            </div>
+
+            <div id="inbox-tab" class="message-list active">
+                {% if inbox_messages %}
+                    {% for message in inbox_messages %}
+                    <div class="message-item {{ 'unread' if not message.is_read else '' }}" 
+                         onclick="openMessage({{ message.id }})">
+                        <div class="message-avatar">
+                            {{ message.sender_name[0].upper() if message.sender_name else 'A' }}
+                        </div>
+                        <div class="message-preview">
+                            <div class="message-header">
+                                <span class="sender-name">{{ message.sender_name or 'Anonymous' }}</span>
+                                <span class="message-time">{{ message.created_at.strftime('%b %d') }}</span>
+                            </div>
+                            <div class="message-subject">{{ message.subject }}</div>
+                            <div class="message-snippet">{{ message.content[:100] }}...</div>
+                        </div>
+                        {% if not message.is_read %}
+                        <div class="unread-indicator"></div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-messages">
+                        <i class="fas fa-inbox"></i>
+                        <p>No messages in your inbox</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div id="sent-tab" class="message-list">
+                {% if sent_messages %}
+                    {% for message in sent_messages %}
+                    <div class="message-item" onclick="openMessage({{ message.id }})">
+                        <div class="message-avatar">
+                            {{ message.recipient_name[0].upper() if message.recipient_name else 'A' }}
+                        </div>
+                        <div class="message-preview">
+                            <div class="message-header">
+                                <span class="sender-name">To: {{ message.recipient_name or 'Anonymous' }}</span>
+                                <span class="message-time">{{ message.created_at.strftime('%b %d') }}</span>
+                            </div>
+                            <div class="message-subject">{{ message.subject }}</div>
+                            <div class="message-snippet">{{ message.content[:100] }}...</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-messages">
+                        <i class="fas fa-paper-plane"></i>
+                        <p>No sent messages</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Message Content -->
+        <div class="message-content">
+            <div id="message-viewer" class="message-viewer">
+                <div class="no-message-selected">
+                    <i class="fas fa-envelope-open"></i>
+                    <h3>Select a message to read</h3>
+                    <p>Choose a message from your inbox to view its contents</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Compose Message Modal -->
+<div id="composeModal" class="modal">
+    <div class="modal-overlay" onclick="closeModal('composeModal')"></div>
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h3>Compose Message</h3>
+            <button class="modal-close" onclick="closeModal('composeModal')">&times;</button>
+        </div>
+        <form id="composeForm" method="POST" action="{{ url_for('send_message') }}">
+            <div class="form-group">
+                <label for="recipient">To</label>
+                <select id="recipient" name="recipient_id" required>
+                    <option value="">Select recipient...</option>
+                    {% for user in available_users %}
+                    <option value="{{ user.user_id }}">{{ user.name }} ({{ user.email }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="subject">Subject</label>
+                <input type="text" id="subject" name="subject" required>
+            </div>
+            <div class="form-group">
+                <label for="content">Message</label>
+                <textarea id="content" name="content" rows="8" required></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i> Send Message
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('composeModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.messages-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.messages-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.messages-layout {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    gap: 20px;
+    height: 70vh;
+}
+
+.messages-sidebar {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.message-tabs {
+    display: flex;
+    border-bottom: 1px solid #eee;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 15px;
+    border: none;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #666;
+    transition: all 0.3s;
+}
+
+.tab-btn.active {
+    background: #f8f9fa;
+    color: #667eea;
+    border-bottom: 2px solid #667eea;
+}
+
+.badge {
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    padding: 2px 6px;
+    font-size: 12px;
+    min-width: 18px;
+    text-align: center;
+}
+
+.message-list {
+    display: none;
+    height: calc(100% - 60px);
+    overflow-y: auto;
+}
+
+.message-list.active {
+    display: block;
+}
+
+.message-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background 0.3s;
+    position: relative;
+}
+
+.message-item:hover {
+    background: #f8f9fa;
+}
+
+.message-item.unread {
+    background: #f0f8ff;
+    border-left: 3px solid #667eea;
+}
+
+.message-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 12px;
+}
+
+.message-preview {
+    flex: 1;
+    min-width: 0;
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.sender-name {
+    font-weight: 500;
+    color: #333;
+}
+
+.message-time {
+    font-size: 12px;
+    color: #999;
+}
+
+.message-subject {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.message-snippet {
+    font-size: 14px;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.unread-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #667eea;
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.message-content {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.message-viewer {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.no-message-selected {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #666;
+}
+
+.no-message-selected i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    color: #ddd;
+}
+
+.no-messages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #666;
+}
+
+.no-messages i {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    color: #ddd;
+}
+
+.message-detail {
+    padding: 20px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.message-detail-header {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.message-detail-subject {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.message-detail-meta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    color: #666;
+    font-size: 14px;
+}
+
+.message-detail-content {
+    flex: 1;
+    line-height: 1.6;
+    color: #333;
+    white-space: pre-wrap;
+}
+
+.message-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.modal-content.large {
+    max-width: 600px;
+}
+
+@media (max-width: 768px) {
+    .messages-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    
+    .messages-sidebar {
+        height: 400px;
+    }
+    
+    .message-content {
+        height: 400px;
+    }
+}
+</style>
+
+<script>
+let currentMessageId = null;
+
+function switchTab(tab) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Update tab content
+    document.querySelectorAll('.message-list').forEach(list => list.classList.remove('active'));
+    document.getElementById(tab + '-tab').classList.add('active');
+}
+
+function openMessage(messageId) {
+    currentMessageId = messageId;
+    
+    // Mark as read
+    fetch(`/api/messages/${messageId}/read`, { method: 'POST' });
+    
+    // Update UI to show as read
+    const messageItem = event.currentTarget;
+    messageItem.classList.remove('unread');
+    const indicator = messageItem.querySelector('.unread-indicator');
+    if (indicator) indicator.remove();
+    
+    // Load message content
+    fetch(`/api/messages/${messageId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayMessage(data.message);
+            }
+        });
+}
+
+function displayMessage(message) {
+    const viewer = document.getElementById('message-viewer');
+    viewer.innerHTML = `
+        <div class="message-detail">
+            <div class="message-detail-header">
+                <div class="message-detail-subject">${message.subject}</div>
+                <div class="message-detail-meta">
+                    <span><i class="fas fa-user"></i> From: ${message.sender_name}</span>
+                    <span><i class="fas fa-clock"></i> ${new Date(message.created_at).toLocaleString()}</span>
+                </div>
+            </div>
+            <div class="message-detail-content">${message.content}</div>
+            <div class="message-actions">
+                <button class="btn btn-primary" onclick="replyToMessage(${message.id}, '${message.sender_name}', '${message.subject}')">
+                    <i class="fas fa-reply"></i> Reply
+                </button>
+                <button class="btn btn-danger" onclick="deleteMessage(${message.id})">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function replyToMessage(messageId, senderName, subject) {
+    // Pre-fill compose form for reply
+    document.getElementById('recipient').value = messageId; // This would need proper recipient ID
+    document.getElementById('subject').value = 'Re: ' + subject;
+    document.getElementById('content').value = `\n\n--- Original Message ---\nFrom: ${senderName}\n`;
+    openModal('composeModal');
+}
+
+function deleteMessage(messageId) {
+    if (confirm('Are you sure you want to delete this message?')) {
+        fetch(`/api/messages/${messageId}`, { method: 'DELETE' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Message deleted', 'success');
+                    location.reload();
+                }
+            });
+    }
+}
+
+// Form submission
+document.getElementById('composeForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('{{ url_for("send_message") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Message sent successfully!', 'success');
+            closeModal('composeModal');
+            this.reset();
+            location.reload();
+        } else {
+            showNotification(data.message || 'Error sending message', 'error');
+        }
+    })
+    .catch(error => {
+        showNotification('Error sending message', 'error');
+    });
+});
+</script>
+{% endblock %}

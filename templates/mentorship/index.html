@@ -1,0 +1,566 @@
+{% extends "base.html" %}
+
+{% block title %}Mentorship Program{% endblock %}
+
+{% block content %}
+<div class="mentorship-container">
+    <div class="mentorship-header">
+        <h1>Mentorship Program</h1>
+        <p>Connect with experienced alumni for guidance and career development</p>
+    </div>
+
+    <div class="mentorship-content">
+        <!-- Available Mentors -->
+        <div class="mentors-section">
+            <h2><i class="fas fa-users"></i> Available Mentors</h2>
+            
+            {% if mentors %}
+            <div class="mentors-grid">
+                {% for mentor in mentors %}
+                <div class="mentor-card">
+                    <div class="mentor-avatar">
+                        {% if mentor.profile_picture %}
+                            <img src="{{ url_for('static', filename='uploads/' + mentor.profile_picture) }}" alt="{{ mentor.name }}">
+                        {% else %}
+                            <div class="avatar-placeholder">
+                                {{ mentor.name[0].upper() }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mentor-info">
+                        <h3>{{ mentor.name }}</h3>
+                        <p class="mentor-role">{{ mentor.current_job }}</p>
+                        <p class="mentor-company">{{ mentor.company }}</p>
+                        <p class="mentor-batch">Batch {{ mentor.batch_year }} • {{ mentor.department }}</p>
+                        
+                        {% if mentor.achievements %}
+                        <div class="mentor-achievements">
+                            <p>{{ mentor.achievements[:100] }}...</p>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="mentor-actions">
+                            <button class="btn btn-primary" onclick="requestMentorship({{ mentor.user_id }}, '{{ mentor.name }}')">
+                                <i class="fas fa-handshake"></i> Request Mentorship
+                            </button>
+                            
+                            <button class="btn btn-secondary" onclick="sendMessageToMentor({{ mentor.user_id }}, '{{ mentor.name }}')">
+                                <i class="fas fa-envelope"></i> Message
+                            </button>
+                            
+                            {% if mentor.linkedin_url %}
+                            <a href="{{ mentor.linkedin_url }}" target="_blank" class="btn btn-secondary btn-sm">
+                                <i class="fab fa-linkedin"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-mentors">
+                <i class="fas fa-user-friends"></i>
+                <h3>No mentors available</h3>
+                <p>Check back later or consider becoming a mentor yourself!</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Your Mentorship Requests -->
+        <div class="requests-section">
+            <h2><i class="fas fa-paper-plane"></i> Your Mentorship Requests</h2>
+            
+            {% if requests %}
+            <div class="requests-list">
+                {% for request in requests %}
+                <div class="request-item">
+                    <div class="request-info">
+                        <h4>{{ request.mentor_name }}</h4>
+                        <p class="request-message">{{ request.message[:100] }}...</p>
+                        <small>Sent on {{ request.created_at.strftime('%B %d, %Y') }}</small>
+                    </div>
+                    
+                    <div class="request-status">
+                        <span class="status-badge {{ request.status }}">
+                            {% if request.status == 'pending' %}
+                                <i class="fas fa-clock"></i> Pending
+                            {% elif request.status == 'accepted' %}
+                                <i class="fas fa-check"></i> Accepted
+                            {% else %}
+                                <i class="fas fa-times"></i> Rejected
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-requests">
+                <p>You haven't sent any mentorship requests yet.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Mentorship Guidelines -->
+        <div class="guidelines-section">
+            <h2><i class="fas fa-info-circle"></i> Mentorship Guidelines</h2>
+            
+            <div class="guidelines-grid">
+                <div class="guideline-card">
+                    <div class="guideline-icon">
+                        <i class="fas fa-target"></i>
+                    </div>
+                    <h3>Set Clear Goals</h3>
+                    <p>Define what you want to achieve through mentorship - career guidance, skill development, or industry insights.</p>
+                </div>
+                
+                <div class="guideline-card">
+                    <div class="guideline-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3>Respect Time</h3>
+                    <p>Be punctual for meetings and respect your mentor's time. Come prepared with specific questions.</p>
+                </div>
+                
+                <div class="guideline-card">
+                    <div class="guideline-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <h3>Communicate Regularly</h3>
+                    <p>Maintain regular communication and provide updates on your progress and challenges.</p>
+                </div>
+                
+                <div class="guideline-card">
+                    <div class="guideline-icon">
+                        <i class="fas fa-heart"></i>
+                    </div>
+                    <h3>Show Appreciation</h3>
+                    <p>Express gratitude for your mentor's time and guidance. A simple thank you goes a long way.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mentorship Request Modal -->
+<div id="mentorshipModal" class="modal">
+    <div class="modal-overlay" onclick="closeModal('mentorshipModal')"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Request Mentorship</h3>
+            <button class="modal-close" onclick="closeModal('mentorshipModal')">&times;</button>
+        </div>
+        <form id="mentorshipForm">
+            <div class="mentor-preview">
+                <p>Sending request to: <strong id="mentorName"></strong></p>
+            </div>
+            
+            <div class="form-group">
+                <label for="mentorshipMessage">Why do you want this person as your mentor?</label>
+                <textarea id="mentorshipMessage" name="message" rows="5" required 
+                    placeholder="Introduce yourself and explain why you're seeking mentorship. Be specific about what you hope to learn or achieve..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="mentorshipGoals">Your Goals</label>
+                <textarea id="mentorshipGoals" name="goals" rows="3" 
+                    placeholder="What are your career goals and how can this mentor help you achieve them?"></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">Send Request</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('mentorshipModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Message Mentor Modal -->
+<div id="messageMentorModal" class="modal">
+    <div class="modal-overlay" onclick="closeModal('messageMentorModal')"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Send Message</h3>
+            <button class="modal-close" onclick="closeModal('messageMentorModal')">&times;</button>
+        </div>
+        <form id="messageMentorForm" method="POST" action="{{ url_for('send_message') }}">
+            <div class="mentor-preview">
+                <p>Sending message to: <strong id="selectedMentorName"></strong></p>
+            </div>
+            
+            <input type="hidden" id="mentorRecipientId" name="recipient_id">
+            
+            <div class="form-group">
+                <label for="messageSubject">Subject</label>
+                <input type="text" id="messageSubject" name="subject" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="messageContent">Message</label>
+                <textarea id="messageContent" name="content" rows="5" required 
+                    placeholder="Write your message here..."></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">Send Message</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('messageMentorModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.mentorship-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.mentorship-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.mentorship-content {
+    display: flex;
+    flex-direction: column;
+    gap: 50px;
+}
+
+.mentors-section h2,
+.requests-section h2,
+.guidelines-section h2 {
+    color: #333;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mentors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 25px;
+}
+
+.mentor-card {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    transition: transform 0.3s;
+}
+
+.mentor-card:hover {
+    transform: translateY(-5px);
+}
+
+.mentor-avatar {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.mentor-avatar img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0 auto;
+}
+
+.mentor-info {
+    text-align: center;
+}
+
+.mentor-info h3 {
+    color: #333;
+    margin-bottom: 8px;
+    font-size: 1.2rem;
+}
+
+.mentor-role {
+    color: #667eea;
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.mentor-company {
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.mentor-batch {
+    color: #999;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.mentor-achievements {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.mentor-achievements p {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.mentor-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+}
+
+.no-mentors {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.no-mentors i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    color: #ddd;
+}
+
+.requests-list {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.request-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.request-item:last-child {
+    border-bottom: none;
+}
+
+.request-info h4 {
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.request-message {
+    color: #666;
+    margin-bottom: 5px;
+    line-height: 1.5;
+}
+
+.request-info small {
+    color: #999;
+}
+
+.status-badge {
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.status-badge.pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.accepted {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.rejected {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.no-requests {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.guidelines-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 25px;
+}
+
+.guideline-card {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.guideline-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin: 0 auto 20px;
+}
+
+.guideline-card h3 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.guideline-card p {
+    color: #666;
+    line-height: 1.6;
+}
+
+.mentor-preview {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.mentor-preview p {
+    margin: 0;
+    color: #666;
+}
+
+@media (max-width: 768px) {
+    .mentors-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .guidelines-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .request-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .mentor-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .mentor-actions .btn {
+        width: 100%;
+    }
+}
+</style>
+
+<script>
+let selectedMentorId = null;
+
+function requestMentorship(mentorId, mentorName) {
+    selectedMentorId = mentorId;
+    document.getElementById('mentorName').textContent = mentorName;
+    openModal('mentorshipModal');
+}
+
+function sendMessageToMentor(mentorId, mentorName) {
+    document.getElementById('selectedMentorName').textContent = mentorName;
+    document.getElementById('mentorRecipientId').value = mentorId;
+    document.getElementById('messageSubject').value = `Mentorship Inquiry - ${mentorName}`;
+    openModal('messageMentorModal');
+}
+
+document.getElementById('mentorshipForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const message = document.getElementById('mentorshipMessage').value;
+    const goals = document.getElementById('mentorshipGoals').value;
+    
+    if (!message.trim()) {
+        showNotification('Please provide a message explaining why you want this mentorship', 'error');
+        return;
+    }
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    showLoading(submitBtn);
+    
+    setTimeout(() => {
+        hideLoading(submitBtn, originalText);
+        showNotification('Mentorship request sent successfully!', 'success');
+        closeModal('mentorshipModal');
+        this.reset();
+        
+        // Simulate page refresh to show new request
+        setTimeout(() => {
+            location.reload();
+        }, 1500);
+    }, 2000);
+});
+
+// Message Mentor Form Handler
+document.addEventListener('DOMContentLoaded', function() {
+    const messageMentorForm = document.getElementById('messageMentorForm');
+    if (messageMentorForm) {
+        messageMentorForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            showLoading(submitBtn, 'Sending Message...');
+            
+            fetch('{{ url_for("send_message") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading(submitBtn, originalText);
+                if (data.success) {
+                    showNotification('Message sent successfully!', 'success');
+                    closeModal('messageMentorModal');
+                    this.reset();
+                } else {
+                    showNotification(data.message || 'Error sending message', 'error');
+                }
+            })
+            .catch(error => {
+                hideLoading(submitBtn, originalText);
+                showNotification('Error sending message', 'error');
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

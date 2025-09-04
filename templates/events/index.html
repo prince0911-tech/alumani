@@ -1,0 +1,1116 @@
+{% extends "base.html" %}
+
+{% block title %}Events{% endblock %}
+
+{% block content %}
+<div class="modern-events-container">
+    <!-- Header Section -->
+    <div class="events-hero">
+        <div class="hero-content">
+            <h1><i class="fas fa-calendar-alt"></i> Alumni Events</h1>
+            <p>Connect, learn, and grow with your alumni community</p>
+        </div>
+        {% if session.role == 'admin' %}
+        <div class="hero-actions">
+            <button class="btn btn-primary btn-lg" onclick="openModal('createEventModal')">
+                <i class="fas fa-plus"></i> Create Event
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Ongoing Events Section -->
+    {% if ongoing_events %}
+    <div class="events-section ongoing-section">
+        <div class="section-header">
+            <h2><i class="fas fa-broadcast-tower"></i> Happening Now</h2>
+            <span class="live-indicator">
+                <span class="pulse"></span>
+                LIVE
+            </span>
+        </div>
+        
+        <div class="ongoing-events-container">
+            {% for event in ongoing_events %}
+            <div class="ongoing-event-card">
+                <div class="ongoing-badge">
+                    <i class="fas fa-circle"></i>
+                    <span>LIVE NOW</span>
+                </div>
+                
+                <div class="event-header">
+                    <div class="event-time">
+                        <i class="fas fa-clock"></i>
+                        {{ event.event_date.strftime('%I:%M %p') }}
+                    </div>
+                    <div class="event-date-badge">
+                        {{ event.event_date.strftime('%b %d') }}
+                    </div>
+                </div>
+                
+                <div class="event-body">
+                    <h3>{{ event.title }}</h3>
+                    <p class="event-description">{{ event.description[:120] }}...</p>
+                    
+                    <div class="event-meta">
+                        {% if event.location %}
+                        <span class="meta-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            {{ event.location }}
+                        </span>
+                        {% endif %}
+                        <span class="meta-item">
+                            <i class="fas fa-users"></i>
+                            {{ event.registration_count }} attending
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="event-actions">
+                    {% if session.role == 'admin' %}
+                    <button class="btn btn-primary" onclick="manageEvent({{ event.id }})">
+                        <i class="fas fa-cog"></i> Manage
+                    </button>
+                    <button class="btn btn-outline" onclick="viewRegistrations({{ event.id }})">
+                        <i class="fas fa-users"></i> Attendees
+                    </button>
+                    {% else %}
+                    {% if event.is_registered %}
+                    <button class="btn btn-success" disabled>
+                        <i class="fas fa-check-circle"></i> You're Attending
+                    </button>
+                    <button class="btn btn-outline" onclick="joinEvent({{ event.id }})">
+                        <i class="fas fa-video"></i> Join Now
+                    </button>
+                    {% else %}
+                    <button class="btn btn-primary" onclick="quickRegister({{ event.id }})">
+                        <i class="fas fa-bolt"></i> Quick Join
+                    </button>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Upcoming Events Section -->
+    <div class="events-section">
+        <div class="section-header">
+            <h2><i class="fas fa-calendar-plus"></i> Upcoming Events</h2>
+            <div class="section-filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="workshop">Workshops</button>
+                <button class="filter-btn" data-filter="reunion">Reunions</button>
+                <button class="filter-btn" data-filter="networking">Networking</button>
+            </div>
+        </div>
+        
+        {% if upcoming_events %}
+        <div class="modern-events-grid">
+            {% for event in upcoming_events %}
+            <div class="modern-event-card" data-category="all">
+                <div class="card-header">
+                    <div class="event-date-modern">
+                        <div class="date-container">
+                            <span class="date-day">{{ event.event_date.strftime('%d') }}</span>
+                            <span class="date-month">{{ event.event_date.strftime('%b') }}</span>
+                        </div>
+                        <div class="date-year">{{ event.event_date.strftime('%Y') }}</div>
+                    </div>
+                    <div class="event-status-badge upcoming">
+                        <i class="fas fa-calendar-check"></i>
+                        Upcoming
+                    </div>
+                </div>
+                
+                <div class="card-content">
+                    <h3 class="event-title">{{ event.title }}</h3>
+                    <p class="event-description">{{ event.description[:100] }}...</p>
+                    
+                    <div class="event-info-grid">
+                        <div class="info-item">
+                            <i class="fas fa-clock"></i>
+                            <span>{{ event.event_date.strftime('%I:%M %p') }}</span>
+                        </div>
+                        {% if event.location %}
+                        <div class="info-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>{{ event.location }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="info-item">
+                            <i class="fas fa-users"></i>
+                            <span>{{ event.registration_count }} registered</span>
+                        </div>
+                        <div class="info-item">
+                            <i class="fas fa-calendar-day"></i>
+                            <span>{{ (event.event_date - datetime.now()).days }} days left</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-footer">
+                    {% if session.role == 'admin' %}
+                    <div class="admin-actions">
+                        <button class="btn btn-primary" onclick="manageEvent({{ event.id }})">
+                            <i class="fas fa-cog"></i> Manage
+                        </button>
+                        <button class="btn btn-outline" onclick="viewRegistrations({{ event.id }})">
+                            <i class="fas fa-users"></i> {{ event.registration_count }}
+                        </button>
+                    </div>
+                    {% else %}
+                    <div class="user-actions">
+                        {% if event.is_registered %}
+                        <button class="btn btn-success btn-full" disabled>
+                            <i class="fas fa-check-circle"></i> Registered
+                        </button>
+                        <div class="secondary-actions">
+                            <button class="btn btn-sm btn-outline" onclick="downloadCertificate({{ event.id }})">
+                                <i class="fas fa-certificate"></i> Certificate
+                            </button>
+                            <button class="btn btn-sm btn-outline" onclick="setReminder({{ event.id }})">
+                                <i class="fas fa-bell"></i> Remind
+                            </button>
+                        </div>
+                        {% else %}
+                        <form method="POST" action="{{ url_for('register_event', event_id=event.id) }}" class="register-form">
+                            <button type="submit" class="btn btn-primary btn-full">
+                                <i class="fas fa-user-plus"></i> Register Now
+                            </button>
+                        </form>
+                        <div class="secondary-actions">
+                            <button class="btn btn-sm btn-outline" onclick="setReminder({{ event.id }})">
+                                <i class="fas fa-bell"></i> Remind Me
+                            </button>
+                            <button class="btn btn-sm btn-outline" onclick="shareEvent({{ event.id }})">
+                                <i class="fas fa-share"></i> Share
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-calendar-times"></i>
+            </div>
+            <h3>No upcoming events</h3>
+            <p>Stay tuned for exciting events and reunions coming your way!</p>
+            {% if session.role == 'admin' %}
+            <button class="btn btn-primary" onclick="openModal('createEventModal')">
+                <i class="fas fa-plus"></i> Create First Event
+            </button>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Past Events Section -->
+    {% if past_events %}
+    <div class="events-section">
+        <div class="section-header">
+            <h2><i class="fas fa-history"></i> Past Events</h2>
+            <button class="btn btn-outline btn-sm" onclick="togglePastEvents()">
+                <i class="fas fa-eye"></i> View All
+            </button>
+        </div>
+        
+        <div class="past-events-modern">
+            {% for event in past_events %}
+            <div class="past-event-card">
+                <div class="past-event-date">
+                    <span class="date">{{ event.event_date.strftime('%b %d, %Y') }}</span>
+                    <span class="status">Completed</span>
+                </div>
+                <div class="past-event-content">
+                    <h4>{{ event.title }}</h4>
+                    <p>{{ event.registration_count }} attendees participated</p>
+                </div>
+                <div class="past-event-actions">
+                    <button class="btn btn-sm btn-outline" onclick="viewEventPhotos({{ event.id }})">
+                        <i class="fas fa-images"></i> Gallery
+                    </button>
+                    <button class="btn btn-sm btn-outline" onclick="viewEventSummary({{ event.id }})">
+                        <i class="fas fa-file-alt"></i> Summary
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if session.role == 'admin' %}
+<!-- Create Event Modal -->
+<div id="createEventModal" class="modal">
+    <div class="modal-overlay" onclick="closeModal('createEventModal')"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Create New Event</h3>
+            <button class="modal-close" onclick="closeModal('createEventModal')">&times;</button>
+        </div>
+        <form id="createEventForm" method="POST" action="{{ url_for('admin_create_event') }}">
+            <div class="form-group">
+                <label for="eventTitle">Event Title</label>
+                <input type="text" id="eventTitle" name="title" required>
+            </div>
+            <div class="form-group">
+                <label for="eventDescription">Description</label>
+                <textarea id="eventDescription" name="description" rows="3" required></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="eventDate">Date & Time</label>
+                    <input type="datetime-local" id="eventDate" name="event_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="eventLocation">Location</label>
+                    <input type="text" id="eventLocation" name="location" required>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">Create Event</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('createEventModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<style>
+/* Modern Events Container */
+.modern-events-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Hero Section */
+.events-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 60px 40px;
+    border-radius: 20px;
+    margin-bottom: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hero-content h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.hero-content p {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    margin: 0;
+}
+
+.hero-actions .btn-lg {
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+/* Section Headers */
+.events-section {
+    margin-bottom: 60px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f0f2f5;
+}
+
+.section-header h2 {
+    color: #1a1a1a;
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.section-header h2 i {
+    color: #667eea;
+}
+
+/* Live Indicator */
+.live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #ff4757;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.pulse {
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* Ongoing Events */
+.ongoing-section {
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+    padding: 30px;
+    border-radius: 20px;
+    margin-bottom: 50px;
+}
+
+.ongoing-events-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 25px;
+}
+
+.ongoing-event-card {
+    background: white;
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    position: relative;
+    border: 2px solid #ff4757;
+}
+
+.ongoing-badge {
+    position: absolute;
+    top: -10px;
+    right: 20px;
+    background: #ff4757;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ongoing-badge i {
+    animation: pulse 1s infinite;
+}
+
+.event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.event-time {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #666;
+    font-weight: 500;
+}
+
+.event-date-badge {
+    background: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Modern Event Cards */
+.modern-events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 30px;
+}
+
+.modern-event-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: 1px solid #f0f2f5;
+}
+
+.modern-event-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+}
+
+.card-header {
+    padding: 25px 25px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.event-date-modern {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.date-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+    min-width: 70px;
+}
+
+.date-day {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.date-month {
+    display: block;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+
+.date-year {
+    color: #666;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.event-status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.event-status-badge.upcoming {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.event-status-badge.ongoing {
+    background: #ffebee;
+    color: #d32f2f;
+}
+
+/* Card Content */
+.card-content {
+    padding: 25px;
+}
+
+.event-title {
+    color: #1a1a1a;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    line-height: 1.3;
+}
+
+.event-description {
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.event-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.info-item i {
+    color: #667eea;
+    width: 16px;
+    text-align: center;
+}
+
+/* Card Footer */
+.card-footer {
+    padding: 0 25px 25px;
+}
+
+.user-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.btn-full {
+    width: 100%;
+    justify-content: center;
+}
+
+.secondary-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.secondary-actions .btn {
+    flex: 1;
+    font-size: 0.85rem;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.admin-actions .btn {
+    flex: 1;
+}
+
+/* Button Styles */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid #e5e7eb;
+    color: #6b7280;
+}
+
+.btn-outline:hover {
+    border-color: #667eea;
+    color: #667eea;
+}
+
+.btn-sm {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+}
+
+/* Section Filters */
+.section-filters {
+    display: flex;
+    gap: 8px;
+}
+
+.filter-btn {
+    padding: 8px 16px;
+    border: 2px solid #e5e7eb;
+    background: white;
+    color: #6b7280;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-btn.active,
+.filter-btn:hover {
+    border-color: #667eea;
+    color: #667eea;
+    background: #f0f4ff;
+}
+
+/* Past Events */
+.past-events-modern {
+    display: grid;
+    gap: 15px;
+}
+
+.past-event-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border: 1px solid #f0f2f5;
+}
+
+.past-event-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 120px;
+}
+
+.past-event-date .date {
+    font-weight: 600;
+    color: #333;
+}
+
+.past-event-date .status {
+    font-size: 0.8rem;
+    color: #10b981;
+    background: #ecfdf5;
+    padding: 4px 8px;
+    border-radius: 12px;
+    margin-top: 5px;
+}
+
+.past-event-content {
+    flex: 1;
+}
+
+.past-event-content h4 {
+    color: #333;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.past-event-content p {
+    color: #666;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.past-event-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: #6b7280;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    color: #d1d5db;
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    color: #374151;
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    margin-bottom: 30px;
+    font-size: 1.1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .modern-events-container {
+        padding: 0 15px;
+    }
+    
+    .events-hero {
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
+        padding: 40px 20px;
+    }
+    
+    .hero-content h1 {
+        font-size: 2rem;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .modern-events-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .ongoing-events-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .event-info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .admin-actions,
+    .secondary-actions {
+        flex-direction: column;
+    }
+    
+    .past-event-card {
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+    }
+    
+    .past-event-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .section-filters {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-content h1 {
+        font-size: 1.8rem;
+    }
+    
+    .modern-event-card {
+        margin: 0 -5px;
+    }
+    
+    .card-header {
+        padding: 20px 20px 0;
+    }
+    
+    .card-content {
+        padding: 20px;
+    }
+    
+    .card-footer {
+        padding: 0 20px 20px;
+    }
+}
+
+/* Animation for form submissions */
+.register-form {
+    width: 100%;
+}
+
+.register-form button {
+    width: 100%;
+}
+
+/* Loading states */
+.btn.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.btn.loading::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 8px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+// Event Management Functions
+function setReminder(eventId) {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    
+    btn.classList.add('loading');
+    
+    setTimeout(() => {
+        btn.classList.remove('loading');
+        showNotification('Email reminder set! You will be notified 24 hours before the event.', 'success');
+        btn.innerHTML = '<i class="fas fa-check"></i> Reminder Set';
+        btn.disabled = true;
+    }, 1500);
+}
+
+function downloadCertificate(eventId) {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    
+    btn.classList.add('loading');
+    
+    setTimeout(() => {
+        btn.classList.remove('loading');
+        showNotification('Certificate downloaded successfully!', 'success');
+        
+        // Simulate PDF download
+        const link = document.createElement('a');
+        link.href = '#';
+        link.download = `event_${eventId}_certificate.pdf`;
+        link.click();
+    }, 2000);
+}
+
+function quickRegister(eventId) {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    
+    btn.classList.add('loading');
+    
+    // Simulate quick registration for ongoing events
+    setTimeout(() => {
+        btn.classList.remove('loading');
+        btn.innerHTML = '<i class="fas fa-check-circle"></i> Registered!';
+        btn.className = 'btn btn-success';
+        btn.disabled = true;
+        showNotification('Successfully registered for the event!', 'success');
+        
+        // Add join button
+        const joinBtn = document.createElement('button');
+        joinBtn.className = 'btn btn-outline';
+        joinBtn.innerHTML = '<i class="fas fa-video"></i> Join Now';
+        joinBtn.onclick = () => joinEvent(eventId);
+        btn.parentNode.appendChild(joinBtn);
+    }, 1500);
+}
+
+function joinEvent(eventId) {
+    showNotification('Opening event meeting room...', 'info');
+    // Simulate opening meeting room
+    setTimeout(() => {
+        window.open(`https://meet.example.com/event-${eventId}`, '_blank');
+    }, 1000);
+}
+
+function shareEvent(eventId) {
+    if (navigator.share) {
+        navigator.share({
+            title: 'Alumni Event',
+            text: 'Check out this alumni event!',
+            url: window.location.href
+        });
+    } else {
+        // Fallback for browsers that don't support Web Share API
+        const url = window.location.href;
+        navigator.clipboard.writeText(url).then(() => {
+            showNotification('Event link copied to clipboard!', 'success');
+        });
+    }
+}
+
+function viewEventPhotos(eventId) {
+    showNotification('Event gallery will be available soon!', 'info');
+}
+
+function viewEventSummary(eventId) {
+    showNotification('Event summary will be available soon!', 'info');
+}
+
+// Admin Functions
+function manageEvent(eventId) {
+    window.location.href = `/admin/events?event_id=${eventId}`;
+}
+
+function viewRegistrations(eventId) {
+    window.open(`/admin/events/${eventId}/registrations`, '_blank');
+}
+
+// Filter Functions
+function initializeFilters() {
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const eventCards = document.querySelectorAll('.modern-event-card');
+    
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Update active filter
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const filter = btn.dataset.filter;
+            
+            // Filter events
+            eventCards.forEach(card => {
+                if (filter === 'all' || card.dataset.category === filter) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
+}
+
+// Past Events Toggle
+function togglePastEvents() {
+    const pastEventsSection = document.querySelector('.past-events-modern');
+    const toggleBtn = event.target;
+    
+    if (pastEventsSection.style.maxHeight === 'none') {
+        pastEventsSection.style.maxHeight = '300px';
+        pastEventsSection.style.overflow = 'hidden';
+        toggleBtn.innerHTML = '<i class="fas fa-eye"></i> View All';
+    } else {
+        pastEventsSection.style.maxHeight = 'none';
+        pastEventsSection.style.overflow = 'visible';
+        toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> Show Less';
+    }
+}
+
+// Form Enhancement
+function enhanceRegistrationForms() {
+    const forms = document.querySelectorAll('.register-form');
+    
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.classList.add('loading');
+            
+            // Let the form submit naturally, but provide visual feedback
+            setTimeout(() => {
+                if (submitBtn) {
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registering...';
+                }
+            }, 100);
+        });
+    });
+}
+
+// Create Event Form Handler
+function initializeCreateEventForm() {
+    const createEventForm = document.getElementById('createEventForm');
+    if (createEventForm) {
+        createEventForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            submitBtn.classList.add('loading');
+            submitBtn.innerHTML = 'Creating Event...';
+            
+            fetch('{{ url_for("admin_create_event") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.classList.remove('loading');
+                submitBtn.innerHTML = originalText;
+                
+                if (data.success) {
+                    showNotification('Event created successfully!', 'success');
+                    closeModal('createEventModal');
+                    this.reset();
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showNotification(data.message || 'Error creating event', 'error');
+                }
+            })
+            .catch(error => {
+                submitBtn.classList.remove('loading');
+                submitBtn.innerHTML = originalText;
+                showNotification('Error creating event', 'error');
+            });
+        });
+    }
+}
+
+// Intersection Observer for animations
+function initializeAnimations() {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    
+    // Observe event cards
+    document.querySelectorAll('.modern-event-card, .ongoing-event-card').forEach(card => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(card);
+    });
+}
+
+// Initialize everything when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initializeFilters();
+    enhanceRegistrationForms();
+    initializeCreateEventForm();
+    initializeAnimations();
+    
+    // Set initial state for past events
+    const pastEventsSection = document.querySelector('.past-events-modern');
+    if (pastEventsSection) {
+        pastEventsSection.style.maxHeight = '300px';
+        pastEventsSection.style.overflow = 'hidden';
+    }
+});
+
+// Auto-refresh ongoing events every 30 seconds
+setInterval(() => {
+    const ongoingSection = document.querySelector('.ongoing-section');
+    if (ongoingSection) {
+        // In a real app, you would fetch updated data here
+        console.log('Refreshing ongoing events...');
+    }
+}, 30000);
+</script>
+{% endblock %}

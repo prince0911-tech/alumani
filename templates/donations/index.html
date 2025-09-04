@@ -1,0 +1,533 @@
+{% extends "base.html" %}
+
+{% block title %}Donations & Fundraising{% endblock %}
+
+{% block content %}
+<div class="donations-container">
+    <div class="donations-header">
+        <h1>Support Your Alma Mater</h1>
+        <p>Help us build a better future for current and future students</p>
+    </div>
+
+    <!-- Fundraising Stats -->
+    <div class="stats-section">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-rupee-sign"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>₹{{ "{:,.0f}".format(total_raised) }}</h3>
+                    <p>Total Raised</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>{{ donor_count }}</h3>
+                    <p>Generous Donors</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-heart"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>15</h3>
+                    <p>Active Campaigns</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>250</h3>
+                    <p>Students Helped</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="donations-content">
+        <!-- Donation Form -->
+        <div class="donation-form-section">
+            <div class="form-card">
+                <h2><i class="fas fa-heart"></i> Make a Donation</h2>
+                
+                <form method="POST" class="donation-form">
+                    <div class="amount-selection">
+                        <label>Select Amount</label>
+                        <div class="amount-buttons">
+                            <button type="button" class="amount-btn" data-amount="1000">₹1,000</button>
+                            <button type="button" class="amount-btn" data-amount="5000">₹5,000</button>
+                            <button type="button" class="amount-btn" data-amount="10000">₹10,000</button>
+                            <button type="button" class="amount-btn" data-amount="25000">₹25,000</button>
+                        </div>
+                        <div class="custom-amount">
+                            <input type="number" name="amount" id="customAmount" placeholder="Enter custom amount" min="100" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="purpose">Donation Purpose</label>
+                        <select name="purpose" id="purpose" required>
+                            <option value="">Select Purpose</option>
+                            <option value="Scholarship Fund">Scholarship Fund</option>
+                            <option value="Infrastructure Development">Infrastructure Development</option>
+                            <option value="Research & Innovation">Research & Innovation</option>
+                            <option value="Student Activities">Student Activities</option>
+                            <option value="Library & Resources">Library & Resources</option>
+                            <option value="Emergency Fund">Emergency Fund</option>
+                            <option value="General Fund">General Fund</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="donor_name">Your Name (for recognition)</label>
+                        <input type="text" name="donor_name" id="donor_name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="is_anonymous">
+                            Make this donation anonymous
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-large">
+                        <i class="fas fa-heart"></i> Donate Now
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Fund Utilization & Leaderboard -->
+        <div class="info-section">
+            <!-- Fund Utilization Chart -->
+            <div class="chart-card">
+                <h3><i class="fas fa-chart-pie"></i> Fund Utilization</h3>
+                <canvas id="utilizationChart" width="400" height="300"></canvas>
+            </div>
+
+            <!-- Donor Leaderboard -->
+            <div class="leaderboard-card">
+                <h3><i class="fas fa-trophy"></i> Top Donors</h3>
+                {% if top_donors %}
+                <div class="leaderboard-list">
+                    {% for donor in top_donors %}
+                    <div class="leaderboard-item">
+                        <div class="donor-rank">{{ loop.index }}</div>
+                        <div class="donor-info">
+                            <h4>{{ donor.donor_name }}</h4>
+                            <p>₹{{ "{:,.0f}".format(donor.total_amount) }}</p>
+                        </div>
+                        {% if loop.index == 1 %}
+                        <div class="donor-badge gold">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        {% elif loop.index == 2 %}
+                        <div class="donor-badge silver">
+                            <i class="fas fa-medal"></i>
+                        </div>
+                        {% elif loop.index == 3 %}
+                        <div class="donor-badge bronze">
+                            <i class="fas fa-award"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p>No donations yet. Be the first to contribute!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Impact Stories -->
+    <div class="impact-section">
+        <h2>Your Impact Stories</h2>
+        <div class="impact-grid">
+            <div class="impact-card">
+                <img src="https://via.placeholder.com/300x200" alt="Scholarship Impact">
+                <div class="impact-content">
+                    <h3>Scholarship Program Success</h3>
+                    <p>Thanks to alumni donations, we've provided scholarships to 50 deserving students this year, helping them pursue their dreams without financial burden.</p>
+                </div>
+            </div>
+            
+            <div class="impact-card">
+                <img src="https://via.placeholder.com/300x200" alt="Infrastructure">
+                <div class="impact-content">
+                    <h3>New Research Lab</h3>
+                    <p>The new AI & Machine Learning lab, funded by alumni contributions, is now operational and serving 200+ students with cutting-edge technology.</p>
+                </div>
+            </div>
+            
+            <div class="impact-card">
+                <img src="https://via.placeholder.com/300x200" alt="Library">
+                <div class="impact-content">
+                    <h3>Digital Library Expansion</h3>
+                    <p>Our digital library now has access to 10,000+ e-books and research papers, made possible through your generous donations.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.donations-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.donations-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.stats-section {
+    margin-bottom: 50px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+}
+
+.stat-info h3 {
+    font-size: 2rem;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.stat-info p {
+    color: #666;
+    font-size: 14px;
+}
+
+.donations-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-bottom: 50px;
+}
+
+.form-card, .chart-card, .leaderboard-card {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.form-card h2 {
+    color: #333;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.amount-selection {
+    margin-bottom: 25px;
+}
+
+.amount-selection label {
+    display: block;
+    margin-bottom: 15px;
+    font-weight: 500;
+    color: #333;
+}
+
+.amount-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.amount-btn {
+    padding: 15px;
+    border: 2px solid #e0e0e0;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.amount-btn:hover, .amount-btn.active {
+    border-color: #667eea;
+    background: #667eea;
+    color: white;
+}
+
+.custom-amount input {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+.btn-large {
+    padding: 15px 30px;
+    font-size: 16px;
+    width: 100%;
+}
+
+.info-section {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.chart-card h3, .leaderboard-card h3 {
+    color: #333;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.leaderboard-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.donor-rank {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #667eea;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.donor-info {
+    flex: 1;
+}
+
+.donor-info h4 {
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.donor-info p {
+    color: #667eea;
+    font-weight: 500;
+}
+
+.donor-badge {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.donor-badge.gold { background: #ffd700; }
+.donor-badge.silver { background: #c0c0c0; }
+.donor-badge.bronze { background: #cd7f32; }
+
+.impact-section {
+    margin-bottom: 50px;
+}
+
+.impact-section h2 {
+    text-align: center;
+    margin-bottom: 40px;
+    color: #333;
+}
+
+.impact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+}
+
+.impact-card {
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    transition: transform 0.3s;
+}
+
+.impact-card:hover {
+    transform: translateY(-5px);
+}
+
+.impact-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.impact-content {
+    padding: 25px;
+}
+
+.impact-content h3 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.impact-content p {
+    color: #666;
+    line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+    .donations-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .amount-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .impact-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+// Amount button selection
+document.querySelectorAll('.amount-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        // Remove active class from all buttons
+        document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
+        
+        // Add active class to clicked button
+        this.classList.add('active');
+        
+        // Set the amount in the input field
+        document.getElementById('customAmount').value = this.dataset.amount;
+    });
+});
+
+// Custom amount input
+document.getElementById('customAmount').addEventListener('input', function() {
+    // Remove active class from all amount buttons when typing custom amount
+    document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
+});
+
+// Form submission
+document.querySelector('.donation-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const amount = document.getElementById('customAmount').value;
+    const purpose = document.getElementById('purpose').value;
+    
+    if (!amount || amount < 100) {
+        showNotification('Please enter a minimum amount of ₹100', 'error');
+        return;
+    }
+    
+    // Simulate payment processing
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    showLoading(submitBtn);
+    
+    setTimeout(() => {
+        hideLoading(submitBtn, originalText);
+        showNotification('Payment successful! Thank you for your generous donation.', 'success');
+        
+        // Reset form
+        this.reset();
+        document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
+        
+        // Simulate page refresh with updated stats
+        setTimeout(() => {
+            location.reload();
+        }, 2000);
+    }, 3000);
+});
+
+// Fund Utilization Chart
+const ctx = document.getElementById('utilizationChart').getContext('2d');
+new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Scholarships', 'Infrastructure', 'Research', 'Activities', 'Library', 'Emergency'],
+        datasets: [{
+            data: [35, 25, 15, 10, 10, 5],
+            backgroundColor: [
+                '#667eea',
+                '#764ba2',
+                '#f093fb',
+                '#f5576c',
+                '#4facfe',
+                '#43e97b'
+            ],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 20,
+                    usePointStyle: true
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

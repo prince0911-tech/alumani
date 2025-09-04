@@ -1,0 +1,2190 @@
+{% extends "base.html" %}
+
+{% block title %}Event Management - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-events-container">
+    <!-- Header Section -->
+    <div class="admin-header">
+        <div class="header-content">
+            <h1><i class="fas fa-calendar-alt"></i> Event Management</h1>
+            <p>Comprehensive event oversight and alumni management</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-primary" onclick="openCreateEventModal()">
+                <i class="fas fa-plus"></i> Create Event
+            </button>
+            <button class="btn btn-secondary" onclick="exportAllEvents()">
+                <i class="fas fa-download"></i> Export Data
+            </button>
+            <div class="search-container">
+                <input type="text" id="eventSearch" placeholder="Search events..." onkeyup="filterEvents()">
+                <i class="fas fa-search"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Dashboard -->
+    <div class="stats-dashboard">
+        <div class="stat-card">
+            <div class="stat-icon total">
+                <i class="fas fa-calendar"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ total_events }}</h3>
+                <p>Total Events</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon ongoing">
+                <i class="fas fa-broadcast-tower"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ ongoing_count }}</h3>
+                <p>Live Events</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon upcoming">
+                <i class="fas fa-calendar-plus"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ upcoming_count }}</h3>
+                <p>Upcoming Events</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon registrations">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ total_registrations }}</h3>
+                <p>Total Registrations</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Filters -->
+    <div class="filter-section">
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="all" onclick="switchTab(this, 'all')">
+                All Events ({{ total_events }})
+            </button>
+            <button class="filter-tab" data-filter="ongoing" onclick="switchTab(this, 'ongoing')">
+                <span class="live-dot"></span>
+                Live Now ({{ ongoing_count }})
+            </button>
+            <button class="filter-tab" data-filter="upcoming" onclick="switchTab(this, 'upcoming')">
+                Upcoming ({{ upcoming_count }})
+            </button>
+            <button class="filter-tab" data-filter="past" onclick="switchTab(this, 'past')">
+                Past Events
+            </button>
+        </div>
+        <div class="filter-controls">
+            <select id="sortBy" onchange="sortEvents()">
+                <option value="date_asc">Date (Earliest First)</option>
+                <option value="date_desc">Date (Latest First)</option>
+                <option value="title">Title (A-Z)</option>
+                <option value="registrations">Most Registered</option>
+            </select>
+            <button class="btn btn-outline" onclick="toggleBulkActions()">
+                <i class="fas fa-tasks"></i> Bulk Actions
+            </button>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Bar (Hidden by default) -->
+    <div id="bulkActionsBar" class="bulk-actions-bar" style="display: none;">
+        <div class="bulk-info">
+            <span id="selectedCount">0</span> events selected
+        </div>
+        <div class="bulk-buttons">
+            <button class="btn btn-sm btn-warning" onclick="bulkSendReminders()">
+                <i class="fas fa-bell"></i> Send Reminders
+            </button>
+            <button class="btn btn-sm btn-info" onclick="bulkExport()">
+                <i class="fas fa-download"></i> Export Selected
+            </button>
+            <button class="btn btn-sm btn-danger" onclick="bulkDelete()">
+                <i class="fas fa-trash"></i> Delete Selected
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="clearSelection()">
+                <i class="fas fa-times"></i> Clear
+            </button>
+        </div>
+    </div>
+
+    <!-- Events List -->
+    <div class="events-list-container">
+        <!-- Ongoing Events -->
+        <div id="ongoing-events" class="event-category" style="display: none;">
+            {% if ongoing_events %}
+            {% for event in ongoing_events %}
+            <div class="event-item ongoing" data-event-id="{{ event.id }}" data-category="ongoing">
+                <div class="event-checkbox">
+                    <input type="checkbox" class="event-select" value="{{ event.id }}">
+                </div>
+                <div class="event-status">
+                    <span class="status-badge live">
+                        <i class="fas fa-circle pulse"></i>
+                        LIVE
+                    </span>
+                </div>
+                <div class="event-info">
+                    <div class="event-header">
+                        <h3>{{ event.title }}</h3>
+                        <div class="event-meta">
+                            <span><i class="fas fa-clock"></i> {{ event.event_date.strftime('%I:%M %p') }}</span>
+                            <span><i class="fas fa-map-marker-alt"></i> {{ event.location or 'Virtual' }}</span>
+                            <span><i class="fas fa-users"></i> {{ event.registration_count }} attending</span>
+                        </div>
+                    </div>
+                    <p class="event-description">{{ event.description[:120] }}...</p>
+                </div>
+                <div class="event-actions">
+                    <button class="btn btn-sm btn-primary" onclick="viewRegistrations({{ event.id }})">
+                        <i class="fas fa-users"></i> Manage Attendees
+                    </button>
+                    <button class="btn btn-sm btn-success" onclick="monitorLiveEvent({{ event.id }})">
+                        <i class="fas fa-eye"></i> Monitor
+                    </button>
+                    <button class="btn btn-sm btn-warning" onclick="sendLiveUpdate({{ event.id }})">
+                        <i class="fas fa-bullhorn"></i> Broadcast
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline dropdown-toggle">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a onclick="editEvent({{ event.id }})"><i class="fas fa-edit"></i> Edit</a>
+                            <a onclick="duplicateEvent({{ event.id }})"><i class="fas fa-copy"></i> Duplicate</a>
+                            <a onclick="endEvent({{ event.id }})"><i class="fas fa-stop"></i> End Event</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- Upcoming Events -->
+        <div id="upcoming-events" class="event-category" style="display: none;">
+            {% if upcoming_events %}
+            {% for event in upcoming_events %}
+            <div class="event-item upcoming" data-event-id="{{ event.id }}" data-category="upcoming">
+                <div class="event-checkbox">
+                    <input type="checkbox" class="event-select" value="{{ event.id }}">
+                </div>
+                <div class="event-status">
+                    <span class="status-badge upcoming">
+                        <i class="fas fa-calendar-check"></i>
+                        {{ ((event.event_date - datetime.now()).days) }} days
+                    </span>
+                </div>
+                <div class="event-info">
+                    <div class="event-header">
+                        <h3>{{ event.title }}</h3>
+                        <div class="event-meta">
+                            <span><i class="fas fa-calendar"></i> {{ event.event_date.strftime('%b %d, %Y at %I:%M %p')
+                                }}</span>
+                            <span><i class="fas fa-map-marker-alt"></i> {{ event.location or 'Virtual' }}</span>
+                            <span><i class="fas fa-users"></i> {{ event.registration_count }} registered</span>
+                        </div>
+                    </div>
+                    <p class="event-description">{{ event.description[:120] }}...</p>
+                </div>
+                <div class="event-actions">
+                    <button class="btn btn-sm btn-primary" onclick="viewRegistrations({{ event.id }})">
+                        <i class="fas fa-users"></i> Registrations ({{ event.registration_count }})
+                    </button>
+                    <button class="btn btn-sm btn-secondary" onclick="editEvent({{ event.id }})">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="btn btn-sm btn-warning" onclick="sendReminders({{ event.id }})">
+                        <i class="fas fa-bell"></i> Remind
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline dropdown-toggle">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a onclick="duplicateEvent({{ event.id }})"><i class="fas fa-copy"></i> Duplicate</a>
+                            <a onclick="exportEvent({{ event.id }})"><i class="fas fa-download"></i> Export</a>
+                            <a onclick="deleteEvent({{ event.id }})"><i class="fas fa-trash"></i> Delete</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- Past Events -->
+        <div id="past-events" class="event-category" style="display: none;">
+            {% if past_events %}
+            {% for event in past_events %}
+            <div class="event-item past" data-event-id="{{ event.id }}" data-category="past">
+                <div class="event-checkbox">
+                    <input type="checkbox" class="event-select" value="{{ event.id }}">
+                </div>
+                <div class="event-status">
+                    <span class="status-badge completed">
+                        <i class="fas fa-check-circle"></i>
+                        Completed
+                    </span>
+                </div>
+                <div class="event-info">
+                    <div class="event-header">
+                        <h3>{{ event.title }}</h3>
+                        <div class="event-meta">
+                            <span><i class="fas fa-calendar"></i> {{ event.event_date.strftime('%b %d, %Y') }}</span>
+                            <span><i class="fas fa-map-marker-alt"></i> {{ event.location or 'Virtual' }}</span>
+                            <span><i class="fas fa-users"></i> {{ event.registration_count }} attended</span>
+                        </div>
+                    </div>
+                    <p class="event-description">{{ event.description[:120] }}...</p>
+                </div>
+                <div class="event-actions">
+                    <button class="btn btn-sm btn-info" onclick="viewEventReport({{ event.id }})">
+                        <i class="fas fa-chart-bar"></i> Report
+                    </button>
+                    <button class="btn btn-sm btn-secondary" onclick="viewRegistrations({{ event.id }})">
+                        <i class="fas fa-users"></i> Attendees
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline dropdown-toggle">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a onclick="duplicateEvent({{ event.id }})"><i class="fas fa-copy"></i> Duplicate</a>
+                            <a onclick="archiveEvent({{ event.id }})"><i class="fas fa-archive"></i> Archive</a>
+                            <a onclick="deleteEvent({{ event.id }})"><i class="fas fa-trash"></i> Delete</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- All Events View -->
+        <div id="all-events" class="event-category" style="display: block;">
+            {% for event in all_events %}
+            <div class="event-item {{ event.status }}" data-event-id="{{ event.id }}"
+                data-category="{{ event.status }}">
+                <div class="event-checkbox">
+                    <input type="checkbox" class="event-select" value="{{ event.id }}">
+                </div>
+                <div class="event-status">
+                    {% if event.status == 'ongoing' %}
+                    <span class="status-badge live">
+                        <i class="fas fa-circle pulse"></i>
+                        LIVE
+                    </span>
+                    {% elif event.status == 'upcoming' %}
+                    <span class="status-badge upcoming">
+                        <i class="fas fa-calendar-check"></i>
+                        {{ ((event.event_date - datetime.now()).days) }} days
+                    </span>
+                    {% else %}
+                    <span class="status-badge completed">
+                        <i class="fas fa-check-circle"></i>
+                        Completed
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="event-info">
+                    <div class="event-header">
+                        <h3>{{ event.title }}</h3>
+                        <div class="event-meta">
+                            <span><i class="fas fa-calendar"></i> {{ event.event_date.strftime('%b %d, %Y at %I:%M %p')
+                                }}</span>
+                            <span><i class="fas fa-map-marker-alt"></i> {{ event.location or 'Virtual' }}</span>
+                            <span><i class="fas fa-users"></i> {{ event.registration_count }} {{ 'attending' if
+                                event.status == 'ongoing' else 'registered' if event.status == 'upcoming' else
+                                'attended' }}</span>
+                        </div>
+                    </div>
+                    <p class="event-description">{{ event.description[:120] }}...</p>
+                </div>
+                <div class="event-actions">
+                    <button class="btn btn-sm btn-primary" onclick="viewRegistrations({{ event.id }})">
+                        <i class="fas fa-users"></i> {{ 'Attendees' if event.status != 'upcoming' else 'Registrations'
+                        }}
+                    </button>
+                    {% if event.status != 'past' %}
+                    <button class="btn btn-sm btn-secondary" onclick="editEvent({{ event.id }})">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    {% endif %}
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline dropdown-toggle">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a onclick="duplicateEvent({{ event.id }})"><i class="fas fa-copy"></i> Duplicate</a>
+                            <a onclick="exportEvent({{ event.id }})"><i class="fas fa-download"></i> Export</a>
+                            <a onclick="deleteEvent({{ event.id }})"><i class="fas fa-trash"></i> Delete</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Empty State -->
+        {% if not all_events %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-calendar-times"></i>
+            </div>
+            <h3>No Events Found</h3>
+            <p>Start by creating your first event to manage alumni engagement.</p>
+            <button class="btn btn-primary" onclick="openCreateEventModal()">
+                <i class="fas fa-plus"></i> Create First Event
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Create/Edit Event Modal -->
+<div id="eventModal" class="modal">
+    <div class="modal-overlay" onclick="closeEventModal()"></div>
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h3 id="modalTitle">Create New Event</h3>
+            <button class="modal-close" onclick="closeEventModal()">&times;</button>
+        </div>
+        <form id="eventForm">
+            <input type="hidden" id="eventId" name="event_id">
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label for="eventTitle">Event Title *</label>
+                    <input type="text" id="eventTitle" name="title" required>
+                </div>
+                <div class="form-group full-width">
+                    <label for="eventDescription">Description *</label>
+                    <textarea id="eventDescription" name="description" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="eventDate">Date & Time *</label>
+                    <input type="datetime-local" id="eventDate" name="event_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="eventLocation">Location</label>
+                    <input type="text" id="eventLocation" name="location" placeholder="Virtual, Main Hall, etc.">
+                </div>
+                <div class="form-group">
+                    <label for="eventCapacity">Max Capacity</label>
+                    <input type="number" id="eventCapacity" name="capacity" min="1" placeholder="Unlimited">
+                </div>
+                <div class="form-group">
+                    <label for="eventType">Event Type</label>
+                    <select id="eventType" name="event_type">
+                        <option value="general">General</option>
+                        <option value="reunion">Reunion</option>
+                        <option value="workshop">Workshop</option>
+                        <option value="networking">Networking</option>
+                        <option value="seminar">Seminar</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="requireApproval" name="require_approval">
+                    Require admin approval for registrations
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="sendNotifications" name="send_notifications" checked>
+                    Send email notifications to alumni
+                </label>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> <span id="submitText">Create Event</span>
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeEventModal()">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Registration Management Modal -->
+<div id="registrationModal" class="modal">
+    <div class="modal-overlay" onclick="closeRegistrationModal()"></div>
+    <div class="modal-content extra-large">
+        <div class="modal-header">
+            <h3 id="registrationModalTitle">Event Registrations</h3>
+            <button class="modal-close" onclick="closeRegistrationModal()">&times;</button>
+        </div>
+        <div class="registration-controls">
+            <div class="registration-stats">
+                <span id="registrationCount">0 registrations</span>
+            </div>
+            <div class="registration-actions">
+                <input type="text" id="registrationSearch" placeholder="Search alumni..."
+                    onkeyup="filterRegistrations()">
+                <button class="btn btn-sm btn-primary" onclick="exportRegistrations()">
+                    <i class="fas fa-download"></i> Export
+                </button>
+                <button class="btn btn-sm btn-warning" onclick="sendBulkReminders()">
+                    <i class="fas fa-bell"></i> Send Reminders
+                </button>
+            </div>
+        </div>
+        <div class="registration-bulk-actions" id="registrationBulkActions" style="display: none;">
+            <div class="bulk-info">
+                <span id="selectedRegistrationCount">0</span> selected
+            </div>
+            <div class="bulk-buttons">
+                <button class="btn btn-sm btn-success" onclick="bulkApproveRegistrations()">
+                    <i class="fas fa-check"></i> Approve
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="bulkRemoveRegistrations()">
+                    <i class="fas fa-times"></i> Remove
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="clearRegistrationSelection()">
+                    Clear
+                </button>
+            </div>
+        </div>
+        <div id="registrationsList" class="registrations-list">
+            <!-- Dynamic content loaded here -->
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Admin Events Styles */
+    .admin-events-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* Header */
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding: 20px 0;
+        border-bottom: 2px solid #f0f2f5;
+    }
+
+    .header-content h1 {
+        color: #1a1a1a;
+        font-size: 2rem;
+        font-weight: 600;
+        margin: 0 0 5px 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .header-content p {
+        color: #666;
+        margin: 0;
+    }
+
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .search-container {
+        position: relative;
+    }
+
+    .search-container input {
+        padding: 10px 40px 10px 15px;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        width: 250px;
+        font-size: 14px;
+    }
+
+    .search-container i {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+    }
+
+    /* Statistics Dashboard */
+    .stats-dashboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        border: 1px solid #f0f2f5;
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.2rem;
+    }
+
+    .stat-icon.total {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .stat-icon.ongoing {
+        background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+    }
+
+    .stat-icon.upcoming {
+        background: linear-gradient(135deg, #2ed573 0%, #1e90ff 100%);
+    }
+
+    .stat-icon.registrations {
+        background: linear-gradient(135deg, #ffa502 0%, #ff6348 100%);
+    }
+
+    .stat-content h3 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0;
+    }
+
+    .stat-content p {
+        color: #666;
+        margin: 5px 0 0 0;
+        font-size: 0.9rem;
+    }
+
+    /* Filter Section */
+    .filter-section {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .filter-tabs {
+        display: flex;
+        gap: 5px;
+    }
+
+    .filter-tab {
+        padding: 10px 20px;
+        border: none;
+        background: #f8f9fa;
+        color: #666;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .filter-tab.active {
+        background: #667eea;
+        color: white;
+    }
+
+    .filter-tab:hover:not(.active) {
+        background: #e9ecef;
+    }
+
+    .live-dot {
+        width: 8px;
+        height: 8px;
+        background: #ff4757;
+        border-radius: 50%;
+        animation: pulse 1.5s infinite;
+    }
+
+    .filter-controls {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .filter-controls select {
+        padding: 8px 12px;
+        border: 2px solid #e5e7eb;
+        border-radius: 6px;
+        background: white;
+    }
+
+    /* Bulk Actions Bar */
+    .bulk-actions-bar {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .bulk-info {
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .bulk-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    /* Events List */
+    .events-list-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .event-item {
+        display: flex;
+        align-items: center;
+        padding: 20px;
+        border-bottom: 1px solid #f0f2f5;
+        transition: background-color 0.2s ease;
+    }
+
+    .event-item:hover {
+        background: #f8f9fa;
+    }
+
+    .event-item:last-child {
+        border-bottom: none;
+    }
+
+    .event-checkbox {
+        margin-right: 15px;
+    }
+
+    .event-checkbox input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .event-status {
+        margin-right: 20px;
+        min-width: 100px;
+    }
+
+    .status-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .status-badge.live {
+        background: #ffebee;
+        color: #d32f2f;
+        border: 1px solid #ffcdd2;
+    }
+
+    .status-badge.upcoming {
+        background: #e3f2fd;
+        color: #1976d2;
+        border: 1px solid #bbdefb;
+    }
+
+    .status-badge.completed {
+        background: #e8f5e8;
+        color: #2e7d32;
+        border: 1px solid #c8e6c9;
+    }
+
+    .pulse {
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.5;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+
+    .event-info {
+        flex: 1;
+        margin-right: 20px;
+    }
+
+    .event-header {
+        margin-bottom: 8px;
+    }
+
+    .event-header h3 {
+        color: #1a1a1a;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0 0 8px 0;
+    }
+
+    .event-meta {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .event-meta span {
+        color: #666;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .event-meta i {
+        color: #667eea;
+        width: 14px;
+    }
+
+    .event-description {
+        color: #666;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        margin: 0;
+    }
+
+    .event-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Dropdown */
+    .dropdown {
+        position: relative;
+    }
+
+    .dropdown-toggle {
+        background: none !important;
+        border: 2px solid #e5e7eb !important;
+        padding: 6px 8px !important;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        min-width: 150px;
+        z-index: 1000;
+        display: none;
+    }
+
+    .dropdown-menu a {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 15px;
+        color: #374151;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .dropdown-menu a:hover {
+        background: #f3f4f6;
+    }
+
+    .dropdown.active .dropdown-menu {
+        display: block;
+    }
+
+    /* Registration Modal Styles */
+    .registrations-list {
+        max-height: 500px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+    }
+
+    .registration-item {
+        display: flex;
+        align-items: center;
+        padding: 15px 20px;
+        border-bottom: 1px solid #f0f2f5;
+        transition: background-color 0.2s ease;
+    }
+
+    .registration-item:hover {
+        background: #f8f9fa;
+    }
+
+    .registration-item:last-child {
+        border-bottom: none;
+    }
+
+    .registration-checkbox {
+        margin-right: 15px;
+    }
+
+    .registration-checkbox input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .registration-info {
+        flex: 1;
+        margin-right: 15px;
+    }
+
+    .registration-info h4 {
+        color: #1a1a1a;
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0 0 5px 0;
+    }
+
+    .registration-info p {
+        color: #666;
+        font-size: 0.85rem;
+        margin: 3px 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .registration-info small {
+        color: #9ca3af;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .registration-info i {
+        color: #667eea;
+        width: 14px;
+        margin-right: 5px;
+    }
+
+    .registration-status {
+        margin-right: 15px;
+    }
+
+    .registration-status .status-badge {
+        padding: 4px 10px;
+        border-radius: 15px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .registration-status .status-badge.approved {
+        background: #e8f5e8;
+        color: #2e7d32;
+        border: 1px solid #c8e6c9;
+    }
+
+    .registration-status .status-badge.pending {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+
+    .registration-status .status-badge.rejected {
+        background: #ffebee;
+        color: #d32f2f;
+        border: 1px solid #ffcdd2;
+    }
+
+    .registration-actions {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .registration-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        border-bottom: 2px solid #f0f2f5;
+        background: #f8f9fa;
+    }
+
+    .registration-stats {
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .registration-actions input {
+        padding: 8px 12px;
+        border: 2px solid #e5e7eb;
+        border-radius: 6px;
+        width: 200px;
+        margin-right: 10px;
+    }
+
+    .registration-bulk-actions {
+        background: #e3f2fd;
+        border: 2px solid #bbdefb;
+        border-radius: 8px;
+        padding: 10px 20px;
+        margin: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 500;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+    }
+
+    .btn-primary {
+        background: #667eea;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #5a6fd8;
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+
+    .btn-success {
+        background: #28a745;
+        color: white;
+    }
+
+    .btn-warning {
+        background: #ffc107;
+        color: #212529;
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-info {
+        background: #17a2b8;
+        color: white;
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 2px solid #e5e7eb;
+        color: #6b7280;
+    }
+
+    .btn-outline:hover {
+        border-color: #667eea;
+        color: #667eea;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2000;
+    }
+
+    .modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+    }
+
+    .modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-content.large {
+        max-width: 800px;
+    }
+
+    .modal-content.extra-large {
+        max-width: 1200px;
+    }
+
+    .modal-header {
+        padding: 20px 25px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        color: #1a1a1a;
+        font-weight: 600;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-close:hover {
+        color: #374151;
+    }
+
+    /* Form Styles */
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        padding: 25px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .form-group label {
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #374151;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        padding: 10px 12px;
+        border: 2px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.2s ease;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .form-options {
+        padding: 0 25px 25px;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+        cursor: pointer;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+    }
+
+    .modal-actions {
+        padding: 20px 25px;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    /* Registration Management */
+    .registration-controls {
+        padding: 20px 25px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .registration-actions {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .registration-actions input {
+        padding: 8px 12px;
+        border: 2px solid #e5e7eb;
+        border-radius: 6px;
+        width: 200px;
+    }
+
+    .registration-bulk-actions {
+        padding: 15px 25px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .registrations-list {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 10px;
+    }
+
+    .registration-item {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        background: white;
+        transition: background-color 0.2s ease;
+    }
+
+    .registration-item:hover {
+        background: #f9fafb;
+    }
+
+    .registration-checkbox {
+        margin-right: 15px;
+    }
+
+    .registration-checkbox input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .registration-info {
+        flex: 1;
+        margin-right: 15px;
+    }
+
+    .registration-info h4 {
+        margin: 0 0 5px 0;
+        color: #1f2937;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .registration-info p {
+        margin: 0 0 3px 0;
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+
+    .registration-info small {
+        color: #9ca3af;
+        font-size: 0.8rem;
+    }
+
+    .registration-status {
+        margin-right: 15px;
+    }
+
+    .registration-status .status-badge {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: capitalize;
+    }
+
+    .registration-status .status-badge.approved {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .registration-status .status-badge.pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .registration-status .status-badge.rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .registration-actions {
+        display: flex;
+        gap: 5px;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        color: #6b7280;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        color: #d1d5db;
+        margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+        color: #374151;
+        margin-bottom: 10px;
+    }
+
+    .empty-state p {
+        margin-bottom: 30px;
+        font-size: 1.1rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .admin-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+        .header-actions {
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .search-container input {
+            width: 200px;
+        }
+
+        .filter-section {
+            flex-direction: column;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .filter-tabs {
+            flex-wrap: wrap;
+        }
+
+        .event-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .event-actions {
+            width: 100%;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .modal-content {
+            width: 95%;
+            margin: 20px;
+        }
+    }
+</style>
+
+<script>
+    // Global variables
+    let currentFilter = 'all';
+    let selectedEvents = new Set();
+    let selectedRegistrations = new Set();
+
+    // Global variables
+    let currentFilter = 'all';
+    let selectedEvents = new Set();
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', function () {
+        initializeEventManagement();
+        setupDropdowns();
+        setupEventForm();
+        setupRegistrationSelection();
+    });
+
+    function initializeEventManagement() {
+        // Show all events by default
+        const allTab = document.querySelector('.filter-tab[data-filter="all"]');
+        if (allTab) {
+            switchTab(allTab, 'all');
+        } else {
+            // Fallback: show all events section directly
+            const allEventsSection = document.getElementById('all-events');
+            if (allEventsSection) {
+                allEventsSection.style.display = 'block';
+            }
+        }
+
+        // Setup event selection
+        setupEventSelection();
+
+        // Auto-refresh for live events
+        setInterval(refreshLiveEvents, 30000); // Refresh every 30 seconds
+    }
+
+    // Tab Management
+    function switchTab(tabElement, filter) {
+        console.log('Switching to tab:', filter);
+
+        // Update active tab
+        document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+        if (tabElement) {
+            tabElement.classList.add('active');
+        }
+
+        // Show/hide event categories
+        document.querySelectorAll('.event-category').forEach(category => {
+            category.style.display = 'none';
+        });
+
+        const targetCategory = document.getElementById(filter + '-events');
+        console.log('Target category element:', targetCategory);
+
+        if (targetCategory) {
+            targetCategory.style.display = 'block';
+            console.log('Showing category:', filter);
+        } else {
+            console.log('Target category not found for filter:', filter);
+        }
+
+        currentFilter = filter;
+        clearSelection();
+    }
+
+    // Event Selection
+    function setupEventSelection() {
+        document.addEventListener('change', function (e) {
+            if (e.target.classList.contains('event-select')) {
+                const eventId = e.target.value;
+                if (e.target.checked) {
+                    selectedEvents.add(eventId);
+                } else {
+                    selectedEvents.delete(eventId);
+                }
+                updateBulkActionsBar();
+            }
+        });
+    }
+
+    function updateBulkActionsBar() {
+        const bulkBar = document.getElementById('bulkActionsBar');
+        const countElement = document.getElementById('selectedCount');
+
+        if (selectedEvents.size > 0) {
+            bulkBar.style.display = 'flex';
+            countElement.textContent = selectedEvents.size;
+        } else {
+            bulkBar.style.display = 'none';
+        }
+    }
+
+    function toggleBulkActions() {
+        const bulkBar = document.getElementById('bulkActionsBar');
+        if (bulkBar.style.display === 'none' || !bulkBar.style.display) {
+            bulkBar.style.display = 'flex';
+        } else {
+            bulkBar.style.display = 'none';
+            clearSelection();
+        }
+    }
+
+    function clearSelection() {
+        selectedEvents.clear();
+        document.querySelectorAll('.event-select').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        updateBulkActionsBar();
+    }
+
+    // Search and Filter
+    function filterEvents() {
+        const searchTerm = document.getElementById('eventSearch').value.toLowerCase();
+        const eventItems = document.querySelectorAll('.event-item');
+
+        eventItems.forEach(item => {
+            const title = item.querySelector('h3').textContent.toLowerCase();
+            const description = item.querySelector('.event-description').textContent.toLowerCase();
+
+            if (title.includes(searchTerm) || description.includes(searchTerm)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    function sortEvents() {
+        const sortBy = document.getElementById('sortBy').value;
+        const container = document.querySelector('#' + currentFilter + '-events');
+        if (!container) return;
+
+        const items = Array.from(container.querySelectorAll('.event-item'));
+
+        items.sort((a, b) => {
+            switch (sortBy) {
+                case 'date_asc':
+                    return new Date(a.dataset.eventDate) - new Date(b.dataset.eventDate);
+                case 'date_desc':
+                    return new Date(b.dataset.eventDate) - new Date(a.dataset.eventDate);
+                case 'title':
+                    return a.querySelector('h3').textContent.localeCompare(b.querySelector('h3').textContent);
+                case 'registrations':
+                    const aCount = parseInt(a.querySelector('.event-meta span:last-child').textContent.match(/\d+/)[0]);
+                    const bCount = parseInt(b.querySelector('.event-meta span:last-child').textContent.match(/\d+/)[0]);
+                    return bCount - aCount;
+                default:
+                    return 0;
+            }
+        });
+
+        items.forEach(item => container.appendChild(item));
+    }
+
+    // Event Management Functions
+    function openCreateEventModal() {
+        document.getElementById('modalTitle').textContent = 'Create New Event';
+        document.getElementById('submitText').textContent = 'Create Event';
+        document.getElementById('eventForm').reset();
+        document.getElementById('eventId').value = '';
+        document.getElementById('eventModal').style.display = 'block';
+    }
+
+    function editEvent(eventId) {
+        // Fetch event data and populate form
+        fetch(`/admin/events/${eventId}/edit`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('modalTitle').textContent = 'Edit Event';
+                    document.getElementById('submitText').textContent = 'Update Event';
+
+                    // Populate form fields
+                    document.getElementById('eventId').value = data.event.id;
+                    document.getElementById('eventTitle').value = data.event.title;
+                    document.getElementById('eventDescription').value = data.event.description;
+                    document.getElementById('eventDate').value = data.event.event_date;
+                    document.getElementById('eventLocation').value = data.event.location || '';
+                    document.getElementById('eventCapacity').value = data.event.capacity || '';
+                    document.getElementById('eventType').value = data.event.event_type || 'general';
+
+                    document.getElementById('eventModal').style.display = 'block';
+                } else {
+                    showNotification('Error loading event data', 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error loading event data', 'error');
+            });
+    }
+
+    function closeEventModal() {
+        document.getElementById('eventModal').style.display = 'none';
+    }
+
+    function setupEventForm() {
+        document.getElementById('eventForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const eventId = document.getElementById('eventId').value;
+            const isEdit = eventId !== '';
+
+            const url = isEdit ? `/admin/events/${eventId}/update` : '/admin/events/create';
+            const method = 'POST';
+
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (isEdit ? 'Updating...' : 'Creating...');
+            submitBtn.disabled = true;
+
+            fetch(url, {
+                method: method,
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                        closeEventModal();
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showNotification(data.message || 'Error saving event', 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error saving event', 'error');
+                })
+                .finally(() => {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                });
+        });
+    }
+
+    // Registration Management
+    function viewRegistrations(eventId) {
+        fetch(`/admin/events/${eventId}/registrations`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('registrationModalTitle').textContent = `${data.event_title} - Registrations`;
+                    document.getElementById('registrationCount').textContent = `${data.registrations.length} registrations`;
+
+                    // Populate registrations list
+                    const listContainer = document.getElementById('registrationsList');
+                    listContainer.innerHTML = generateRegistrationsList(data.registrations);
+
+                    document.getElementById('registrationModal').style.display = 'block';
+                } else {
+                    showNotification('Error loading registrations', 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error loading registrations', 'error');
+            });
+    }
+
+    function generateRegistrationsList(registrations) {
+        if (registrations.length === 0) {
+            return `
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>No Registrations Yet</h3>
+                <p>No alumni have registered for this event yet.</p>
+            </div>
+        `;
+        }
+
+        return registrations.map(reg => `
+        <div class="registration-item" data-registration-id="${reg.id}">
+            <div class="registration-checkbox">
+                <input type="checkbox" class="registration-select" value="${reg.id}">
+            </div>
+            <div class="registration-info">
+                <h4>${reg.name || 'Unknown Name'}</h4>
+                <p>
+                    <i class="fas fa-envelope"></i> ${reg.email || 'No email'} • 
+                    <i class="fas fa-graduation-cap"></i> ${reg.batch_year || 'Unknown'} • 
+                    <i class="fas fa-building"></i> ${reg.department || 'Unknown Department'}
+                </p>
+                ${reg.company ? `<p><i class="fas fa-briefcase"></i> ${reg.company}</p>` : ''}
+                <small><i class="fas fa-calendar"></i> Registered: ${reg.registered_at || 'Unknown date'}</small>
+            </div>
+            <div class="registration-status">
+                <span class="status-badge ${(reg.registration_status || reg.status || 'approved').toLowerCase()}">
+                    ${(reg.registration_status || reg.status || 'Approved').charAt(0).toUpperCase() + (reg.registration_status || reg.status || 'Approved').slice(1).toLowerCase()}
+                </span>
+            </div>
+            <div class="registration-actions">
+                <button class="btn btn-sm btn-info" onclick="viewAlumniProfile(${reg.user_id})" title="View Profile">
+                    <i class="fas fa-user"></i>
+                </button>
+                <button class="btn btn-sm btn-warning" onclick="sendReminder(${reg.id})" title="Send Reminder">
+                    <i class="fas fa-bell"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="removeRegistration(${reg.id})" title="Remove Registration">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+    }
+
+    function closeRegistrationModal() {
+        document.getElementById('registrationModal').style.display = 'none';
+        clearRegistrationSelection();
+    }
+
+    function clearRegistrationSelection() {
+        selectedRegistrations.clear();
+        document.querySelectorAll('.registration-select').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        document.getElementById('registrationBulkActions').style.display = 'none';
+    }
+
+    // Registration selection handling
+    let selectedRegistrations = new Set();
+
+    function setupRegistrationSelection() {
+        document.addEventListener('change', function (e) {
+            if (e.target.classList.contains('registration-select')) {
+                const registrationId = e.target.value;
+                if (e.target.checked) {
+                    selectedRegistrations.add(registrationId);
+                } else {
+                    selectedRegistrations.delete(registrationId);
+                }
+
+                // Update bulk actions visibility
+                const bulkActions = document.getElementById('registrationBulkActions');
+                const selectedCount = document.getElementById('selectedRegistrationCount');
+
+                if (selectedRegistrations.size > 0) {
+                    bulkActions.style.display = 'flex';
+                    selectedCount.textContent = selectedRegistrations.size;
+                } else {
+                    bulkActions.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // Filter registrations
+    function filterRegistrations() {
+        const searchTerm = document.getElementById('registrationSearch').value.toLowerCase();
+        const registrationItems = document.querySelectorAll('.registration-item');
+
+        registrationItems.forEach(item => {
+            const name = item.querySelector('h4').textContent.toLowerCase();
+            const email = item.querySelector('p').textContent.toLowerCase();
+
+            if (name.includes(searchTerm) || email.includes(searchTerm)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // Individual registration actions
+    function viewAlumniProfile(userId) {
+        // Open alumni profile in new tab
+        window.open(`/admin/alumni/${userId}/profile`, '_blank');
+    }
+
+    function sendReminder(registrationId) {
+        if (confirm('Send reminder email to this alumni?')) {
+            fetch(`/admin/events/registration/${registrationId}/remind`, {
+                method: 'POST'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Reminder sent successfully', 'success');
+                    } else {
+                        showNotification(data.message || 'Error sending reminder', 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error sending reminder', 'error');
+                });
+        }
+    }
+
+    function removeRegistration(registrationId) {
+        if (confirm('Remove this registration? The alumni will be notified.')) {
+            fetch(`/admin/events/registration/${registrationId}/remove`, {
+                method: 'DELETE'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Registration removed successfully', 'success');
+                        // Remove the registration item from the list
+                        const registrationItem = document.querySelector(`[data-registration-id="${registrationId}"]`);
+                        if (registrationItem) {
+                            registrationItem.remove();
+                        }
+                        // Update count
+                        const currentCount = parseInt(document.getElementById('registrationCount').textContent);
+                        document.getElementById('registrationCount').textContent = `${currentCount - 1} registrations`;
+                    } else {
+                        showNotification(data.message || 'Error removing registration', 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error removing registration', 'error');
+                });
+        }
+    }
+
+    // Bulk actions
+    function bulkApproveRegistrations() {
+        if (selectedRegistrations.size === 0) return;
+
+        if (confirm(`Approve ${selectedRegistrations.size} selected registrations?`)) {
+            fetch('/admin/events/registrations/bulk-approve', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    registration_ids: Array.from(selectedRegistrations)
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Registrations approved successfully', 'success');
+                        clearRegistrationSelection();
+                        // Refresh the registration list
+                        const eventId = document.querySelector('.registration-item')?.dataset.eventId;
+                        if (eventId) viewRegistrations(eventId);
+                    } else {
+                        showNotification(data.message || 'Error approving registrations', 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error approving registrations', 'error');
+                });
+        }
+    }
+
+    function bulkRemoveRegistrations() {
+        if (selectedRegistrations.size === 0) return;
+
+        if (confirm(`Remove ${selectedRegistrations.size} selected registrations? Alumni will be notified.`)) {
+            fetch('/admin/events/registrations/bulk-remove', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    registration_ids: Array.from(selectedRegistrations)
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Registrations removed successfully', 'success');
+                        clearRegistrationSelection();
+                        // Refresh the registration list
+                        const eventId = document.querySelector('.registration-item')?.dataset.eventId;
+                        if (eventId) viewRegistrations(eventId);
+                    } else {
+                        showNotification(data.message || 'Error removing registrations', 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error removing registrations', 'error');
+                });
+        }
+    }
+
+    function sendBulkReminders() {
+        if (selectedRegistrations.size === 0) {
+            // Send to all if none selected
+            if (confirm('Send reminder emails to all registered alumni?')) {
+                const allRegistrations = Array.from(document.querySelectorAll('.registration-select')).map(cb => cb.value);
+                sendBulkReminderRequest(allRegistrations);
+            }
+        } else {
+            if (confirm(`Send reminder emails to ${selectedRegistrations.size} selected alumni?`)) {
+                sendBulkReminderRequest(Array.from(selectedRegistrations));
+            }
+        }
+    }
+
+    function sendBulkReminderRequest(registrationIds) {
+        fetch('/admin/events/registrations/bulk-remind', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                registration_ids: registrationIds
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Reminders sent to ${registrationIds.length} alumni`, 'success');
+                } else {
+                    showNotification(data.message || 'Error sending reminders', 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error sending reminders', 'error');
+            });
+    }
+
+    // Event Actions
+    function deleteEvent(eventId) {
+        if (confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+            fetch(`/admin/events/${eventId}/delete`, {
+                method: 'DELETE'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Event deleted successfully', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showNotification(data.message || 'Error deleting event', 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error deleting event', 'error');
+                });
+        }
+    }
+
+    function duplicateEvent(eventId) {
+        fetch(`/admin/events/${eventId}/duplicate`, {
+            method: 'POST'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Event duplicated successfully', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showNotification(data.message || 'Error duplicating event', 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error duplicating event', 'error');
+            });
+    }
+
+    function sendReminders(eventId) {
+        fetch(`/admin/events/${eventId}/send-reminders`, {
+            method: 'POST'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Reminders sent to ${data.count} alumni`, 'success');
+                } else {
+                    showNotification(data.message || 'Error sending reminders', 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error sending reminders', 'error');
+            });
+    }
+
+    // Live Event Functions
+    function monitorLiveEvent(eventId) {
+        window.open(`/admin/events/${eventId}/monitor`, '_blank');
+    }
+
+    function sendLiveUpdate(eventId) {
+        const message = prompt('Enter message to broadcast to attendees:');
+        if (message) {
+            fetch(`/admin/events/${eventId}/broadcast`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Message broadcasted to attendees', 'success');
+                    } else {
+                        showNotification('Error broadcasting message', 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error broadcasting message', 'error');
+                });
+        }
+    }
+
+    function endEvent(eventId) {
+        if (confirm('Are you sure you want to end this live event?')) {
+            fetch(`/admin/events/${eventId}/end`, {
+                method: 'POST'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Event ended successfully', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showNotification('Error ending event', 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error ending event', 'error');
+                });
+        }
+    }
+
+    // Bulk Actions
+    function bulkDelete() {
+        if (selectedEvents.size === 0) return;
+
+        if (confirm(`Are you sure you want to delete ${selectedEvents.size} selected events?`)) {
+            fetch('/admin/events/bulk-delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ event_ids: Array.from(selectedEvents) })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(`${data.deleted_count} events deleted successfully`, 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showNotification('Error deleting events', 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error deleting events', 'error');
+                });
+        }
+    }
+
+    function bulkSendReminders() {
+        if (selectedEvents.size === 0) return;
+
+        fetch('/admin/events/bulk-reminders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ event_ids: Array.from(selectedEvents) })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Reminders sent for ${data.event_count} events`, 'success');
+                } else {
+                    showNotification('Error sending reminders', 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error sending reminders', 'error');
+            });
+    }
+
+    function bulkExport() {
+        if (selectedEvents.size === 0) return;
+
+        const eventIds = Array.from(selectedEvents).join(',');
+        window.open(`/admin/events/export?event_ids=${eventIds}`, '_blank');
+    }
+
+    // Export Functions
+    function exportAllEvents() {
+        window.open('/admin/events/export', '_blank');
+    }
+
+    function exportEvent(eventId) {
+        window.open(`/admin/events/export?event_ids=${eventId}`, '_blank');
+    }
+
+    function exportRegistrations() {
+        // Implementation for exporting current event registrations
+        showNotification('Export functionality will be implemented', 'info');
+    }
+
+    // Utility Functions
+    function setupDropdowns() {
+        document.addEventListener('click', function (e) {
+            if (e.target.classList.contains('dropdown-toggle')) {
+                e.preventDefault();
+                const dropdown = e.target.closest('.dropdown');
+
+                // Close all other dropdowns
+                document.querySelectorAll('.dropdown.active').forEach(d => {
+                    if (d !== dropdown) d.classList.remove('active');
+                });
+
+                // Toggle current dropdown
+                dropdown.classList.toggle('active');
+            } else {
+                // Close all dropdowns when clicking outside
+                document.querySelectorAll('.dropdown.active').forEach(d => {
+                    d.classList.remove('active');
+                });
+            }
+        });
+    }
+
+    function refreshLiveEvents() {
+        // Refresh live events data
+        if (currentFilter === 'ongoing' || currentFilter === 'all') {
+            fetch('/admin/events/live-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateLiveEventStatus(data.events);
+                    }
+                })
+                .catch(error => {
+                    console.log('Error refreshing live events:', error);
+                });
+        }
+    }
+
+    function updateLiveEventStatus(events) {
+        // Update live event indicators and counts
+        events.forEach(event => {
+            const eventElement = document.querySelector(`[data-event-id="${event.id}"]`);
+            if (eventElement) {
+                const attendeeCount = eventElement.querySelector('.event-meta span:last-child');
+                if (attendeeCount) {
+                    attendeeCount.innerHTML = `<i class="fas fa-users"></i> ${event.current_attendees} attending`;
+                }
+            }
+        });
+    }
+
+    // Notification System
+    function showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+        <div class="notification-content">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+            <span>${message}</span>
+        </div>
+        <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+    `;
+
+        // Add to page
+        document.body.appendChild(notification);
+
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    // Add notification styles
+    const notificationStyles = `
+<style>
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 3000;
+    min-width: 300px;
+    border-left: 4px solid #667eea;
+}
+
+.notification-success { border-left-color: #28a745; }
+.notification-error { border-left-color: #dc3545; }
+.notification-warning { border-left-color: #ffc107; }
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #9ca3af;
+    margin-left: 15px;
+}
+</style>
+`;
+
+    document.head.insertAdjacentHTML('beforeend', notificationStyles);
+</script>
+{% endblock %}
